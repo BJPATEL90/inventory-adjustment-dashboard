@@ -288,3 +288,97 @@ td.wrap{white-space:normal;max-width:200px;}
 @media(max-width:1024px){.kpi-grid{grid-template-columns:repeat(2,1fr);}.two-col,.chart-grid{grid-template-columns:1fr;}}
 @media(max-width:768px){.sidebar{transform:translateX(-100%);box-shadow:var(--shadow-lg);}.sidebar.mobile-open{transform:translateX(0);}.main-content{margin-left:0!important;}.mobile-menu-btn{display:flex;}.topbar{padding:0 16px;}.page-content{padding:16px;}.kpi-grid{grid-template-columns:repeat(2,1fr);gap:10px;}.filters-bar{padding:10px 14px;}.search-input{width:140px;}.month-selector-wrap{display:none;}}
 @media(max-width:480px){.kpi-grid{grid-template-columns:1fr 1fr;gap:8px;}.kpi-value{font-size:22px;}.last-updated{display:none;}}
+
+/* ============================================================
+   styles_additions.css — V2 additions
+   Add these rules to the END of your existing styles.css
+   ============================================================ */
+
+/* ── KPI Font Override: DM Sans instead of Syne ────────────── */
+.kpi-value {
+  font-family: 'DM Sans', system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 26px !important;
+  letter-spacing: -0.3px !important;
+}
+
+/* ── REPLACE Alert Banner ────────────────────────────────────── */
+.replace-alert-banner {
+  background: #FFF5F5;
+  border: 2px solid #FCA5A5;
+  border-left: 6px solid #DC2626;
+  border-radius: var(--r-lg);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  animation: section-in 0.4s ease both;
+}
+.replace-alert-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.replace-alert-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #991B1B;
+  margin-bottom: 3px;
+}
+.replace-alert-sub {
+  font-size: 12.5px;
+  color: #B91C1C;
+}
+
+/* ── REPLACE row highlight in Variance Tracker ──────────────── */
+.replace-row {
+  background: #FFF5F5 !important;
+}
+.replace-row:hover {
+  background: #FEE2E2 !important;
+}
+.badge-replace {
+  background: #FEE2E2;
+  color: #991B1B;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid #FCA5A5;
+  white-space: nowrap;
+}
+
+/* ── Facility View Toggle ────────────────────────────────────── */
+.view-toggle-group {
+  display: flex;
+  gap: 4px;
+}
+.view-toggle-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.view-toggle-btn.active {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+.view-toggle-btn:hover:not(.active) {
+  background: var(--canvas);
+}
+
+/* ── Sidebar Data Links ──────────────────────────────────────── */
+.nav-item[target="_blank"] {
+  color: rgba(255,255,255,0.45);
+  font-size: 12.5px;
+}
+.nav-item[target="_blank"]:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.75);
+}
