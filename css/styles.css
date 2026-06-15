@@ -459,3 +459,209 @@ td.wrap{white-space:normal;max-width:200px;}
   background: var(--border); border-radius: 3px;
 }
 .vt-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+/* ============================================================
+   V3 CSS ADDITIONS
+   Paste into your existing stylesheet (styles.css or inline)
+   ============================================================ */
+
+/* ── Expiry Filter Buttons ─────────────────────────────────── */
+.expiry-filter-group {
+  display: flex;
+  gap: 6px;
+}
+
+.expiry-filter-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.expiry-filter-btn.active,
+.expiry-filter-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── KPI Cards — Expiry colours ───────────────────────────── */
+.kpi-loss .kpi-value  { color: #e53e3e; }
+.kpi-gain .kpi-value  { color: #38a169; }
+.kpi-worst .kpi-value { color: #dd6b20; }
+
+/* ── Expiry Diff Badge ─────────────────────────────────────── */
+.expiry-diff {
+  font-weight: 700;
+  font-size: 13px;
+}
+.expiry-diff.loss { color: #e53e3e; }
+.expiry-diff.gain { color: #38a169; }
+
+.expiry-mini {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+/* ── Pills ─────────────────────────────────────────────────── */
+.pill-loss    { background: #fed7d7; color: #c53030; }
+.pill-gain    { background: #c6f6d5; color: #276749; }
+.pill-neutral { background: #e2e8f0; color: #4a5568; }
+.pill-replace { background: #fed7d7; color: #c53030; margin-left: 4px; }
+
+.expiry-badge {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+/* ── Expiry Table ──────────────────────────────────────────── */
+.expiry-table .batch-detail {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.expiry-table .batch-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.expiry-table .expiry-date {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.expiry-table .qty-tag {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ── Variance Tracker Level 1 — Facility Cards ─────────────── */
+.facility-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 4px 0 16px;
+}
+
+.facility-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.facility-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  border-color: var(--accent);
+}
+
+.facility-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.facility-card-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.facility-card-stats {
+  display: flex;
+  gap: 24px;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+.stat-value.variance-nonzero { color: #e53e3e; }
+.stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Variance Tracker Level 2 ─────────────────────────────── */
+.l2-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.l2-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.btn-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-back:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── Variance Table Row Colours ───────────────────────────── */
+.variance-table tr.row-expiry-loss { background: #fff5f5; }
+.variance-table tr.row-expiry-gain { background: #f0fff4; }
+.variance-table tr.row-add         { background: #ebf8ff; }
+.variance-table tr.row-remove      { background: #fffaf0; }
+
+.variance-table .qty-cell { text-align: right; font-variant-numeric: tabular-nums; }
+.variance-table .variance-nonzero { font-weight: 700; color: #e53e3e; }
+
+/* Date group header row */
+.variance-table tr.date-group-header td {
+  background: var(--bg-secondary, #f7fafc);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-top: 2px solid var(--border);
+}
+.date-count { font-weight: 400; }
+
+/* Remark button */
+.btn-remark {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-remark:hover { background: var(--accent); color: #fff; }
+
+/* Loading / empty states */
+.loading-msg, .empty-msg {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
