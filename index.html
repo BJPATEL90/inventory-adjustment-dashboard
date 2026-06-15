@@ -1,114 +1,439 @@
-<!-- ============================================================
-     INDEX.HTML ADDITIONS — V3
-     Instructions: paste each block into the correct location
-     in your existing index.html
-     ============================================================ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory Adjustment Dashboard — Mosaic Wellness</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
 
-
-<!-- ① ADD TO SIDEBAR NAV — after the existing "Variance Tracker" nav item -->
-<a href="#" class="nav-item" data-section="expiry-tracker" onclick="App.showSection('expiry-tracker')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <circle cx="12" cy="12" r="10"/>
-    <polyline points="12 6 12 12 16 14"/>
-  </svg>
-  Expiry Tracker
-</a>
-
-
-<!-- ② EXPIRY TRACKER SECTION — add as new section alongside existing sections -->
-<section id="expiry-tracker" class="dashboard-section" style="display:none">
-
-  <!-- Header -->
-  <div class="section-header">
-    <div class="section-title-row">
-      <h2 class="section-title">Expiry Tracker</h2>
-      <p class="section-subtitle">Batch swap events where shelf life was lost or gained</p>
+  <!-- ══════════════════════════════════════════════════════════
+       LOGIN SCREEN
+  ══════════════════════════════════════════════════════════ -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-bg">
+      <div class="login-orb login-orb-1"></div>
+      <div class="login-orb login-orb-2"></div>
+      <div class="login-grid"></div>
     </div>
-    <div class="section-controls">
-      <input type="month" id="expiry-month-picker" class="month-picker">
-      <div class="expiry-filter-group">
-        <button class="expiry-filter-btn active" data-filter="all">All</button>
-        <button class="expiry-filter-btn" data-filter="Loss">Loss Only</button>
-        <button class="expiry-filter-btn" data-filter="Gain">Gain Only</button>
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="assets/logo.svg" alt="Mosaic Wellness" onerror="this.style.display='none'" />
+        <span class="login-brand">Mosaic Wellness</span>
       </div>
+      <h1 class="login-title">Inventory Dashboard</h1>
+      <p class="login-sub">Sign in with your Mosaic Wellness account to continue</p>
+      <div id="google-signin-btn" class="google-signin-btn"></div>
+      <p class="login-note">Access restricted to @mosaicwellness.in accounts</p>
     </div>
   </div>
 
-  <!-- Summary Cards -->
-  <div class="kpi-row">
-    <div class="kpi-card kpi-loss">
-      <div class="kpi-value" id="expiry-loss-count">—</div>
-      <div class="kpi-label">Expiry Loss Cases</div>
-    </div>
-    <div class="kpi-card kpi-gain">
-      <div class="kpi-value" id="expiry-gain-count">—</div>
-      <div class="kpi-label">Expiry Gain Cases</div>
-    </div>
-    <div class="kpi-card kpi-worst">
-      <div class="kpi-value" id="expiry-worst-days">—</div>
-      <div class="kpi-label">Worst Loss (days)</div>
-    </div>
-  </div>
+  <!-- ══════════════════════════════════════════════════════════
+       APP SHELL (hidden until auth)
+  ══════════════════════════════════════════════════════════ -->
+  <div id="app-shell" class="app-shell" style="display:none">
 
-  <!-- Table -->
-  <div class="card">
-    <div id="expiry-table-container">
-      <p class="loading-msg">Loading…</p>
-    </div>
-  </div>
+    <!-- ── Sidebar ── -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <img src="assets/logo.svg" alt="MW" class="sidebar-logo" onerror="this.style.display='none'" />
+        <span class="sidebar-brand">Inventory</span>
+        <button id="sidebar-toggle" class="sidebar-toggle" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+      </div>
 
-</section>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-section="daily-tracker" onclick="App.showSection('daily-tracker'); return false;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          <span>Daily Tracker</span>
+        </a>
+        <a href="#" class="nav-item" data-section="mtd-tracker" onclick="App.showSection('mtd-tracker'); return false;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <span>MTD Tracker</span>
+        </a>
+        <a href="#" class="nav-item" data-section="variance-tracker" onclick="App.showSection('variance-tracker'); return false;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6"  y1="20" x2="6"  y2="14"/>
+          </svg>
+          <span>Variance Tracker</span>
+        </a>
+        <a href="#" class="nav-item" data-section="expiry-tracker" onclick="App.showSection('expiry-tracker'); return false;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span>Expiry Tracker</span>
+        </a>
+        <a href="#" class="nav-item" data-section="remarks-tracker" onclick="App.showSection('remarks-tracker'); return false;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>Remarks</span>
+        </a>
 
+        <div class="nav-divider"></div>
+        <p class="nav-section-label">Sheets</p>
 
-<!-- ③ VARIANCE TRACKER SECTION — REPLACE existing variance section with this -->
-<section id="variance-tracker" class="dashboard-section" style="display:none">
+        <a href="https://docs.google.com/spreadsheets/d/1DIVGIpyvfsPVL9f80c6fnQO9fHyyDdhhgK8BRZF9U6s/edit#gid=1917601641"
+           class="nav-item nav-item-external" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>Processed Data</span>
+        </a>
+        <a href="https://docs.google.com/spreadsheets/d/1DIVGIpyvfsPVL9f80c6fnQO9fHyyDdhhgK8BRZF9U6s/edit#gid=126229950"
+           class="nav-item nav-item-external" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>Remarks Sheet</span>
+        </a>
+      </nav>
 
-  <!-- Header -->
-  <div class="section-header">
-    <div class="section-title-row">
-      <h2 class="section-title">Variance Tracker</h2>
-      <p class="section-subtitle">MTD variance by facility</p>
-    </div>
-    <div class="section-controls">
-      <input type="month" id="variance-month-picker" class="month-picker">
-    </div>
-  </div>
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <img id="user-avatar" class="user-avatar" src="" alt="" />
+          <div class="user-details">
+            <span id="user-name" class="user-name"></span>
+            <span id="user-email" class="user-email"></span>
+          </div>
+        </div>
+        <button id="logout-btn" class="logout-btn" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
 
-  <!-- Level 1: Facility Cards -->
-  <div id="variance-level1">
-    <div id="variance-facility-cards">
-      <p class="loading-msg">Loading facilities…</p>
-    </div>
-  </div>
+    <!-- ── Main Content ── -->
+    <main id="main-content" class="main-content">
 
-  <!-- Level 2: Filtered Table (hidden until facility selected) -->
-  <div id="variance-level2" style="display:none">
-    <div class="l2-header">
-      <button id="variance-back-btn" class="btn-back">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-          <polyline points="15 18 9 12 15 6"/>
+      <!-- Topbar -->
+      <header class="topbar">
+        <button id="mobile-menu-btn" class="mobile-menu-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="6"  x2="21" y2="6"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <h1 id="page-title" class="page-title">Daily Tracker</h1>
+        <div class="topbar-actions">
+          <input type="date" id="date-picker" class="date-picker" />
+          <button id="refresh-btn" class="btn btn-primary" onclick="App.refresh()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <!-- REPLACE ALERT BANNER -->
+      <div id="replace-alert-banner" class="replace-alert-banner" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
         </svg>
-        All Facilities
-      </button>
-      <h3 id="variance-l2-title" class="l2-title"></h3>
-    </div>
-    <div class="card">
-      <div id="variance-table-container">
-        <p class="loading-msg">Loading…</p>
+        <span id="replace-alert-text">REPLACE adjustments detected — review required</span>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
+           DAILY TRACKER SECTION
+      ════════════════════════════════════════════════ -->
+      <section id="daily-tracker" class="dashboard-section">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">Daily Tracker</h2>
+            <p class="section-subtitle" id="daily-subtitle">Inventory adjustments for selected date</p>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid" id="daily-kpi-grid">
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Total Events</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Total Added Qty</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Total Removed Qty</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Net Variance</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Balanced SKUs</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Variance SKUs</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Facilities Impacted</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Users Impacted</div></div>
+        </div>
+
+        <!-- Top Variance SKUs -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Top Variance SKUs</h3>
+          </div>
+          <div id="daily-top-variance" class="table-scroll">
+            <p class="loading-msg">Loading…</p>
+          </div>
+        </div>
+
+        <!-- Facility Summary -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Facility Summary</h3>
+            <div class="toggle-group">
+              <span class="toggle-label">Bucketed</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="facility-detail-toggle" onchange="Daily.toggleFacilityView(this.checked)" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Detailed</span>
+            </div>
+          </div>
+          <div id="daily-facility-summary" class="table-scroll">
+            <p class="loading-msg">Loading…</p>
+          </div>
+        </div>
+
+        <!-- User Summary -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">User Summary</h3>
+          </div>
+          <div id="daily-user-summary" class="table-scroll">
+            <p class="loading-msg">Loading…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════
+           MTD TRACKER SECTION
+      ════════════════════════════════════════════════ -->
+      <section id="mtd-tracker" class="dashboard-section" style="display:none">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">MTD Tracker</h2>
+            <p class="section-subtitle" id="mtd-subtitle">Month-to-date inventory adjustment summary</p>
+          </div>
+        </div>
+
+        <!-- MTD KPI Cards -->
+        <div class="kpi-grid" id="mtd-kpi-grid">
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Total Events</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Total Added Qty</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Total Removed Qty</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Net Variance</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Balanced SKUs</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Variance SKUs</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Facilities Impacted</div></div>
+          <div class="kpi-card kpi-skeleton"><div class="kpi-value">—</div><div class="kpi-label">Users Impacted</div></div>
+        </div>
+
+        <!-- MTD Top 20 SKUs -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">MTD Top 20 SKUs by Variance</h3>
+          </div>
+          <div id="mtd-top-skus" class="table-scroll">
+            <p class="loading-msg">Loading…</p>
+          </div>
+        </div>
+
+        <!-- Daily Trend Chart -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Daily Variance Trend</h3>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="mtd-trend-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Facility Chart -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Variance by Facility</h3>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="mtd-facility-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- User Chart -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Variance by User</h3>
+          </div>
+          <div class="chart-wrap chart-wrap-sm">
+            <canvas id="mtd-user-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════
+           VARIANCE TRACKER SECTION — V3 2-level nav
+      ════════════════════════════════════════════════ -->
+      <section id="variance-tracker" class="dashboard-section" style="display:none">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">Variance Tracker</h2>
+            <p class="section-subtitle">MTD variance by facility</p>
+          </div>
+          <div class="section-controls">
+            <input type="month" id="variance-month-picker" class="month-picker" />
+          </div>
+        </div>
+
+        <!-- Level 1: Facility Cards -->
+        <div id="variance-level1">
+          <div id="variance-facility-cards">
+            <p class="loading-msg">Loading facilities…</p>
+          </div>
+        </div>
+
+        <!-- Level 2: Filtered Table -->
+        <div id="variance-level2" style="display:none">
+          <div class="l2-header">
+            <button id="variance-back-btn" class="btn-back">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              All Facilities
+            </button>
+            <h3 id="variance-l2-title" class="l2-title"></h3>
+          </div>
+          <div class="card">
+            <div id="variance-table-container">
+              <p class="loading-msg">Loading…</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════
+           EXPIRY TRACKER SECTION — V3 NEW
+      ════════════════════════════════════════════════ -->
+      <section id="expiry-tracker" class="dashboard-section" style="display:none">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">Expiry Tracker</h2>
+            <p class="section-subtitle">Batch swap events where shelf life was lost or gained</p>
+          </div>
+          <div class="section-controls">
+            <input type="month" id="expiry-month-picker" class="month-picker" />
+            <div class="expiry-filter-group">
+              <button class="expiry-filter-btn active" data-filter="all">All</button>
+              <button class="expiry-filter-btn" data-filter="Loss">Loss Only</button>
+              <button class="expiry-filter-btn" data-filter="Gain">Gain Only</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="kpi-row">
+          <div class="kpi-card kpi-loss">
+            <div class="kpi-value" id="expiry-loss-count">—</div>
+            <div class="kpi-label">Expiry Loss Cases</div>
+          </div>
+          <div class="kpi-card kpi-gain">
+            <div class="kpi-value" id="expiry-gain-count">—</div>
+            <div class="kpi-label">Expiry Gain Cases</div>
+          </div>
+          <div class="kpi-card kpi-worst">
+            <div class="kpi-value" id="expiry-worst-days">—</div>
+            <div class="kpi-label">Worst Loss (days)</div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+          <div id="expiry-table-container">
+            <p class="loading-msg">Loading…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════════════════════════════════════
+           REMARKS TRACKER SECTION
+      ════════════════════════════════════════════════ -->
+      <section id="remarks-tracker" class="dashboard-section" style="display:none">
+        <div class="section-header">
+          <div class="section-title-row">
+            <h2 class="section-title">Remarks</h2>
+            <p class="section-subtitle">User-submitted remarks on variance events</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="filter-row">
+              <input type="text" id="remarks-search" class="filter-input" placeholder="Search SKU, facility, user…" oninput="Remarks.filter()" />
+            </div>
+          </div>
+          <div id="remarks-table-container" class="table-scroll">
+            <p class="loading-msg">Loading…</p>
+          </div>
+        </div>
+      </section>
+
+    </main><!-- /main-content -->
+  </div><!-- /app-shell -->
+
+  <!-- ══════════════════════════════════════════════════════════
+       REMARK MODAL
+  ══════════════════════════════════════════════════════════ -->
+  <div id="remark-modal" class="modal-overlay" style="display:none" onclick="App.closeRemarkModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Remark</h3>
+        <button class="modal-close" onclick="App.closeRemarkModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-meta" id="remark-modal-meta"></p>
+        <textarea id="remark-text" class="remark-textarea" placeholder="Enter your remark…" rows="4"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="App.closeRemarkModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="App.submitRemark()">Submit Remark</button>
       </div>
     </div>
   </div>
 
-</section>
+  <!-- ══════════════════════════════════════════════════════════
+       TOAST CONTAINER
+  ══════════════════════════════════════════════════════════ -->
+  <div id="toast-container" class="toast-container"></div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       SCRIPTS — ORDER MATTERS
+  ══════════════════════════════════════════════════════════ -->
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/daily.js"></script>
+  <script src="js/mtd.js"></script>
+  <script src="js/variance-tracker.js"></script>
+  <script src="js/expiry-tracker.js"></script>
+  <script src="js/remarks.js"></script>
 
-<!-- ④ ADD SCRIPT TAGS — before closing </body> tag -->
-<script src="js/expiry-tracker.js"></script>
-<!-- variance-tracker.js replaces your existing one — same filename -->
-
-
-<!-- ⑤ ADD TO App.showSection() or init() — call ExpiryTracker.init() and VarianceTracker.init() -->
-<!-- In your existing app.js or main init block, ensure these are called:
-     ExpiryTracker.init();
-     VarianceTracker.init();
--->
+</body>
+</html>
