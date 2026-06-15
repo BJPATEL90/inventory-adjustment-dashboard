@@ -8,6 +8,7 @@
 // ============================================================
 
 var VarianceTracker = (function() {
+// NOTE: also aliased as 'Variance' at bottom for backward compatibility with app.js
 
   var _currentMonth    = '';
   var _selectedFacility = null;
@@ -262,3 +263,6 @@ var VarianceTracker = (function() {
   };
 
 })();
+
+// Backward-compatibility alias — app.js may call Variance.init()
+var Variance = VarianceTracker;
