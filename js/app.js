@@ -21,16 +21,17 @@ function navigate(module) {
   document.querySelectorAll('.nav-item[data-module]').forEach(function(el) {
     el.classList.toggle('active', el.dataset.module === module);
   });
-  var labels = { daily:'Daily Tracker', mtd:'MTD Tracker', variance:'Variance Tracker', remarks:'Remarks Tracker' };
+  var labels = { daily:'Daily Tracker', mtd:'MTD Tracker', variance:'Variance Tracker', expiry:'Expiry Tracker', remarks:'Remarks Tracker' };
   document.getElementById('topbar-module').textContent = labels[module]||module;
   document.getElementById('month-selector-wrap').style.display = module==='daily'?'none':'flex';
   document.getElementById('page-content').innerHTML = '';
   switch (module) {
-    case 'daily':    renderDaily();    break;
-    case 'mtd':      renderMTD();      break;
+    case 'daily': renderDaily(); break;
+    case 'mtd': renderMTD(); break;
     case 'variance': renderVariance(); break;
-    case 'remarks':  renderRemarks();  break;
-  }
+    case 'expiry': renderExpiry(); break;
+    case 'remarks': renderRemarks(); break;
+    }
 }
 
 function onMonthChange() {
