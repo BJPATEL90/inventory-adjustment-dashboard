@@ -150,7 +150,10 @@ function _renderDailyKPIs(data, replData) {
   var netV = parseInt(k.netVarianceQty) || 0;
   var netColor = netV === 0 ? '#059669' : (netV > 0 ? '#D97706' : '#DC2626');
   var netBg    = netV === 0 ? '#D1FAE5' : (netV > 0 ? '#FEF3C7' : '#FEE2E2');
-  var replCount = (replData && replData.count) ? replData.count : 0;
+  var replCount  = (replData && replData.count) ? replData.count : 0;
+  var replNetQty = (replData && replData.items)
+    ? replData.items.reduce(function(s, r) { return s + (r.replaceNetQty || 0); }, 0)
+    : 0;
 
   row1.innerHTML =
     kpiCard('Total Events',    fmtNum(k.totalEvents),    '#2E86C1', '#DBEAFE', 'activity') +
@@ -162,9 +165,11 @@ function _renderDailyKPIs(data, replData) {
     kpiCard('Balanced SKUs',   fmtNum(k.balancedSKUs),   '#059669', '#D1FAE5', 'check-circle',   false, true) +
     kpiCard('Variance SKUs',   fmtNum(k.varianceSKUs),   '#DC2626', '#FEE2E2', 'alert-triangle',  false, true) +
     kpiCard('Facilities',      fmtNum(k.facilitiesImpacted), '#0F2035', '#E0E7EF', 'map-pin',     false, true) +
-    kpiCard('REPLACE Events',  replCount,                 replCount > 0 ? '#DC2626' : '#059669',
-                                                          replCount > 0 ? '#FEE2E2' : '#D1FAE5',
-                                                          'alert-octagon', false, true);
+    kpiCard('REPLACE Net Impact',
+      replNetQty !== 0 ? (replNetQty > 0 ? '+' : '') + fmtNum(replNetQty) : replCount + ' events',
+      replCount > 0 ? '#DC2626' : '#059669',
+      replCount > 0 ? '#FEE2E2' : '#D1FAE5',
+      'alert-octagon', replNetQty !== 0, true);
 
   // Update nav badge
   var badge = document.getElementById('badge-replace');
@@ -184,6 +189,8 @@ function _renderReplaceAlert(data) {
       '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(r.itemName || '') + '</td>' +
       '<td class="num" style="color:var(--green)">+' + fmtNum(r.addedQty) + '</td>' +
       '<td class="num" style="color:var(--orange)">' + fmtNum(r.removedQty) + '</td>' +
+      '<td class="num" style="color:' + (r.replaceNetQty < 0 ? 'var(--red)' : 'var(--green)') + ';font-weight:700;">' +
+        (r.replaceNetQty > 0 ? '+' : '') + fmtNum(r.replaceNetQty) + '</td>' +
       '</tr>';
   }).join('');
   wrap.innerHTML =
