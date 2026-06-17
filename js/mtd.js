@@ -87,8 +87,12 @@ function _fetchMTDData(month, cacheKey, silent) {
   }).catch(function(e) {
     lsClear(cacheKey);
     if (!silent) {
-      document.getElementById('mtd-root').innerHTML = emptyState('No MTD data',
-        'API timeout or no data. Try refreshing.');
+      document.getElementById('mtd-root').innerHTML =
+        '<div style="padding:32px;text-align:center;">' +
+        '<p style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Loading took too long</p>' +
+        '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Apps Script is warming up. Click to retry.</p>' +
+        '<button class="btn-primary" onclick="lsClear(\'iamd_mtd_current\');clearAPICache();navigate(\'mtd\');" style="cursor:pointer;">' +
+        'Try Again</button></div>';
       setSyncError();
     }
     console.error('MTD error:', e);
