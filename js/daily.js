@@ -67,12 +67,15 @@ function renderDaily() {
   // Check localStorage cache first
   var cacheKey = 'iamd_daily_' + (month || 'current');
   var cached = lsGet(cacheKey);
-  if (cached && cached.ts && (Date.now() - cached.ts) < 5 * 60 * 1000) {
-    // Render from cache
+  // Only use cache if complete — must have kpi AND skus data
+  var cacheValid = cached && cached.ts &&
+    (Date.now() - cached.ts) < 5 * 60 * 1000 &&
+    cached.data && cached.data.kpi && cached.data.kpi.date &&
+    cached.data.skus && Array.isArray(cached.data.skus.skus) && cached.data.skus.skus.length > 0;
+
+  if (cacheValid) {
     var cd = cached.data;
-    if (cd.kpi && cd.kpi.date) {
-      document.getElementById('daily-sub').textContent = 'Showing adjustments for ' + (cd.kpi.dateFormatted || cd.kpi.date);
-    }
+    document.getElementById('daily-sub').textContent = 'Showing adjustments for ' + (cd.kpi.dateFormatted || cd.kpi.date);
     _renderDailyKPIs(cd.kpi, cd.replace);
     _renderReplaceAlert(cd.replace);
     _renderBreakdown(cd.ft, 'brand');
@@ -82,12 +85,12 @@ function renderDaily() {
     _dailyFacView = 'type';
     _renderFacilityTable();
     APP._downloadRows = _buildDownloadRows(cd.kpi, cd.fac, cd.skus);
-    setSyncLive(cached.data.kpi && cached.data.kpi.date);
-    // Refresh in background silently
+    setSyncLive(cd.kpi.date);
     _fetchDailyData(month, cacheKey, true);
     return;
   }
-
+  // Clear any stale/incomplete cache
+  if (cached) lsClear(cacheKey);
   setSyncIdle();
   _fetchDailyData(month, cacheKey, false);
 }
@@ -117,7 +120,10 @@ function _fetchDailyData(month, cacheKey, silent) {
       data.ft    = res2[1];
       data.fac   = res2[2];
       data.users = res2[3];
-      lsSet(cacheKey, { ts: Date.now(), data: data });
+      // Only cache when batch 2 completes — ensures full data stored
+      if (data.kpi && data.skus && data.skus.skus && data.skus.skus.length > 0) {
+        lsSet(cacheKey, { ts: Date.now(), data: data });
+      }
       _renderBreakdown(data.ft, 'brand');
       _renderTopSKUs(data.skus);
       window._dailyFtData  = data.ft;
