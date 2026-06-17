@@ -8,7 +8,8 @@ var API = {
   _n: 0,
 };
 
-function apiFetch(action, params, skipCache) {
+function apiFetch(action, params, skipCache, _retryCount) {
+  _retryCount = _retryCount || 0;
   var key = action + JSON.stringify(params || {});
   if (!skipCache && API._cache[key]) {
     var c = API._cache[key];
@@ -23,7 +24,16 @@ function apiFetch(action, params, skipCache) {
       var s = document.getElementById(cb);
       if (s && s.parentNode) s.parentNode.removeChild(s);
     }
-    timeoutId = setTimeout(function() { cleanup(); reject(new Error('API timeout: ' + action)); }, 18000);
+    timeoutId = setTimeout(function() {
+      cleanup();
+      // Auto-retry once on timeout (Apps Script cold start can take 20-25s)
+      if (_retryCount < 1) {
+        logRetry(action);
+        apiFetch(action, params, skipCache, 1).then(resolve).catch(reject);
+      } else {
+        reject(new Error('API timeout after retry: ' + action));
+      }
+    }, 30000);
     window[cb] = function(json) {
       cleanup();
       // Support both {success:true} and {status:'ok'}
@@ -55,6 +65,7 @@ function apiCall(action, params, callback) {
 }
 
 function clearAPICache() { API._cache = {}; }
+function logRetry(action) { console.warn('[API] Timeout on ' + action + ' — retrying...'); }
 
 // ── Existing endpoints ─────────────────────────────────────────
 function apiGetDailyKPI(p)            { return apiFetch('getDailyKPI', p); }
