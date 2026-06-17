@@ -18,7 +18,7 @@ function renderVariance() {
       '<div class="page-header-row">' +
         '<div><h2>Variance Tracker</h2><p>MTD variance by facility — click a facility to drill down</p></div>' +
         '<div class="page-header-controls">' +
-          '<input type="month" id="variance-month-picker" class="month-select" value="' + defaultMonth + '" onchange="_varianceMonthChange(this.value)" />' +
+          _buildMonthSelect('variance-month-picker', defaultMonth, '_varianceMonthChange') +
         '</div>' +
       '</div>' +
     '</div>' +
