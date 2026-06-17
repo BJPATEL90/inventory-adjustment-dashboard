@@ -11,7 +11,7 @@ function renderVariance() {
   var root = document.getElementById('variance-root');
 
   var now = new Date();
-  var defaultMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  var m1 = now.getMonth()+1; var defaultMonth = now.getFullYear() + '-' + (m1<10?'0'+m1:''+m1);
 
   root.innerHTML =
     '<div class="page-header">' +
@@ -78,7 +78,7 @@ function _varianceRenderCards(facilities) {
       : '';
 
     html +=
-      '<div class="facility-card" onclick="_varianceDrilldown(' + JSON.stringify(f.facility) + ')" style="cursor:pointer;">' +
+      '<div class="facility-card" data-fac="' + _vEsc(f.facility) + '" style="cursor:pointer;">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">' +
           '<span style="font-weight:700;font-size:14px;">' + _vEsc(f.facility) + '</span>' +
           (f.facilityType ? '<span class="badge badge-blue" style="font-size:11px;">' + _vEsc(f.facilityType) + '</span>' : '') +
@@ -92,6 +92,12 @@ function _varianceRenderCards(facilities) {
   });
   html += '</div>';
   container.innerHTML = html;
+  // Attach click via addEventListener to avoid quote-escaping issues
+  container.querySelectorAll('.facility-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      _varianceDrilldown(card.getAttribute('data-fac'));
+    });
+  });
 }
 
 function _varianceDrilldown(facility) {
