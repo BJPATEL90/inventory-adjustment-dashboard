@@ -126,11 +126,17 @@ function _renderMTDKPIs(data) {
     kpiCard('Total Removed',   fmtNum(k.totalRemovedQty),'#D97706', '#FEF3C7', 'minus-circle') +
     kpiCard('Net Variance',    (netV >= 0 ? '+' : '') + fmtNum(netV), netColor, netBg, 'trending-up', true);
 
+  var replCount  = k.replaceCount  || 0;
+  var replNetQty = k.replaceNetQty || 0;
   if (row2) row2.innerHTML =
-    kpiCard('Balanced SKUs',   fmtNum(k.balancedSKUs),      '#059669', '#D1FAE5', 'check-circle',    false, true) +
-    kpiCard('Variance SKUs',   fmtNum(k.varianceSKUs),      '#DC2626', '#FEE2E2', 'alert-triangle',   false, true) +
-    kpiCard('Facilities',      fmtNum(k.facilitiesImpacted), '#0F2035', '#E0E7EF', 'map-pin',         false, true) +
-    kpiCard('Users Impacted',  fmtNum(k.usersImpacted),     '#6C3483', '#EDE9F8', 'users',            false, true);
+    kpiCard('Balanced SKUs',    fmtNum(k.balancedSKUs),       '#059669', '#D1FAE5', 'check-circle',   false, true) +
+    kpiCard('Variance SKUs',    fmtNum(k.varianceSKUs),       '#DC2626', '#FEE2E2', 'alert-triangle',  false, true) +
+    kpiCard('Facilities',       fmtNum(k.facilitiesImpacted), '#0F2035', '#E0E7EF', 'map-pin',        false, true) +
+    kpiCard('REPLACE Net Impact',
+      replCount > 0 ? (replNetQty !== 0 ? (replNetQty>0?'+':'') + fmtNum(replNetQty) : replCount + ' events') : '0',
+      replCount > 0 ? '#DC2626' : '#059669',
+      replCount > 0 ? '#FEE2E2' : '#D1FAE5',
+      'alert-octagon', replNetQty !== 0, true);
 }
 
 function _renderTrendChart(data) {
