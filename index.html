@@ -195,5 +195,28 @@
 <script src="js/variance-tracker.js"></script>
 <script src="js/expiry-tracker.js"></script>
 <script src="js/remarks.js"></script>
+
+<script>
+// ── Silent warm-up ping ───────────────────────────────────────
+// Fires immediately on page load (before login) to wake Apps Script.
+// By the time user authenticates, the cold start is already done.
+(function() {
+  try {
+    var cb = 'warmup_' + Date.now();
+    var s  = document.createElement('script');
+    var t  = setTimeout(function() {
+      delete window[cb];
+      if (s.parentNode) s.parentNode.removeChild(s);
+    }, 35000);
+    window[cb] = function() {
+      clearTimeout(t);
+      delete window[cb];
+      if (s.parentNode) s.parentNode.removeChild(s);
+    };
+    s.src = 'https://script.google.com/macros/s/AKfycbzVgwXZywWhX2l2rR24Ntt5lsfjwn8EWfKPYsnqZqirdzXsvSUpaFndJUk4I4udy5lo/exec?action=ping&callback=' + cb;
+    document.head.appendChild(s);
+  } catch(e) {}
+})();
+</script>
 </body>
 </html>
