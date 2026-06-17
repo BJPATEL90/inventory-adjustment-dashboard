@@ -85,8 +85,10 @@ function _fetchMTDData(month, cacheKey, silent) {
     _renderMTDAll(data);
     setSyncLive(data.mtd && data.mtd.month);
   }).catch(function(e) {
+    lsClear(cacheKey);
     if (!silent) {
-      document.getElementById('mtd-root').innerHTML = emptyState('No MTD data', 'Run processing first or check connection.');
+      document.getElementById('mtd-root').innerHTML = emptyState('No MTD data',
+        'API timeout or no data. Try refreshing.');
       setSyncError();
     }
     console.error('MTD error:', e);
