@@ -133,8 +133,12 @@ function _fetchDailyData(month, cacheKey, silent) {
   }).catch(function(e) {
     lsClear(cacheKey);
     if (!silent) {
-      document.getElementById('daily-kpi-row1').innerHTML = emptyState('No data available',
-        'API timeout or no data for this date. Try refreshing.');
+      document.getElementById('daily-kpi-row1').innerHTML =
+        '<div style="padding:32px;text-align:center;">' +
+        '<p style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Loading took too long</p>' +
+        '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Apps Script is warming up. Usually resolves in a few seconds.</p>' +
+        '<button class="btn-primary" onclick="lsClear(\'iamd_daily_current\');clearAPICache();navigate(\'daily\');" style="cursor:pointer;">' +
+        'Try Again</button></div>';
       setSyncError();
     }
     console.error('Daily error:', e);
