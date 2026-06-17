@@ -166,14 +166,7 @@ function _varianceRenderTable(records) {
         '<td style="text-align:right;">' + fmtVar(vQty) + '</td>' +
         '<td>' + statusHtml + '</td>' +
         '<td>' + expiryHtml + '</td>' +
-        '<td><button class="btn btn-ghost" style="font-size:11px;padding:3px 8px;" onclick="openRemarkModal(' +
-          JSON.stringify(r['Process_Date'] + '_' + r['Facility_Display'] + '_' + r['SKU_Code']) + ',' +
-          JSON.stringify(r['Process_Date']) + ',' +
-          JSON.stringify(r['Facility_Display'] || r['Facility_Raw'] || '') + ',' +
-          JSON.stringify((r['Username'] || '').split('@')[0]) + ',' +
-          JSON.stringify(r['SKU_Code'] || '') + ',' +
-          JSON.stringify(r['Item_Name'] || '') +
-        ')">+ Remark</button></td>' +
+        '<td>' + _vRemarkCell(r) + '</td>' +
         '</tr>';
     });
   });
@@ -188,3 +181,29 @@ function _vEsc(s) {
 
 // Backward compat alias
 var Variance = { init: function(){}, render: renderVariance };
+
+// Show existing remark text if available, otherwise show Add button
+function _vRemarkCell(r) {
+  var existingRemark = String(r['User_Remark'] || r['Source_Remark'] || '').trim();
+  var date     = String(r['Process_Date']    || '');
+  var facility = String(r['Facility_Display']|| r['Facility_Raw'] || '');
+  var sku      = String(r['SKU_Code']        || '');
+  var username = String(r['Username']        || '').split('@')[0];
+  var item     = String(r['Item_Name']       || '');
+  var key      = date + '_' + facility + '_' + sku;
+
+  if (existingRemark && existingRemark !== '') {
+    return '<div style="font-size:11.5px;color:var(--text-secondary);font-style:italic;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + _vEsc(existingRemark) + '">' +
+      '<svg viewBox="0 0 24 24" width="11" height="11" style="margin-right:3px;vertical-align:middle;color:var(--green)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+      _vEsc(existingRemark.length > 40 ? existingRemark.substring(0,40) + '...' : existingRemark) +
+    '</div>';
+  }
+  return '<button class="btn-remark" onclick="openRemarkModal(' +
+    JSON.stringify(key) + ',' +
+    JSON.stringify(date) + ',' +
+    JSON.stringify(facility) + ',' +
+    JSON.stringify(username) + ',' +
+    JSON.stringify(sku) + ',' +
+    JSON.stringify(item) +
+    ')">+ Remark</button>';
+}
