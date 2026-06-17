@@ -148,6 +148,20 @@ function showToast(message, type) {
   }, 3500);
 }
 
+
+// ── Month Select Builder ───────────────────────────────────────────────────────
+// Builds a <select> dropdown matching the style of the topbar month selector.
+// Populated from APP.archiveMonths + "Current Month" option.
+function _buildMonthSelect(id, selectedMonth, onchangeFn) {
+  var now = new Date();
+  var currentMonthKey = now.getFullYear() + '-' + (now.getMonth()+1<10?'0':'') + (now.getMonth()+1);
+  var opts = '<option value="' + currentMonthKey + '"' + (!selectedMonth || selectedMonth === currentMonthKey ? ' selected' : '') + '>Current Month</option>';
+  (APP.archiveMonths || []).forEach(function(m) {
+    opts += '<option value="' + m.key + '"' + (selectedMonth === m.key ? ' selected' : '') + '>' + m.display + '</option>';
+  });
+  return '<select id="' + id + '" class="month-select" onchange="' + onchangeFn + '(this.value)">' + opts + '</select>';
+}
+
 // ── Download CSV ───────────────────────────────────────────────
 function downloadCSV() {
   var rows = APP._downloadRows;
