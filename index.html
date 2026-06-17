@@ -1,209 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inventory Adjustment Dashboard — Mosaic Wellness</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Inventory Adjustment Dashboard — Mosaic Wellness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="stylesheet" href="css/styles.css"/>
 </head>
 <body>
 
-  <!-- ══════════════════════════════════════════════
-       LOGIN SCREEN
-  ══════════════════════════════════════════════ -->
-  <div id="login-screen" class="login-screen">
-    <div class="login-bg">
-      <div class="login-orb login-orb-1"></div>
-      <div class="login-orb login-orb-2"></div>
-      <div class="login-grid"></div>
+<!-- LOGIN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-bg">
+    <div class="login-orb orb-1"></div>
+    <div class="login-orb orb-2"></div>
+    <div class="login-grid"></div>
+  </div>
+  <div class="login-card">
+    <div class="login-mark">
+      <span>MW</span>
     </div>
-    <div class="login-card">
-      <div class="login-logo">
-        <img src="assets/logo.svg" alt="Mosaic Wellness" onerror="this.style.display='none'" />
-        <span class="login-brand" style="color:#ffffff;font-weight:700;font-size:16px;letter-spacing:0.02em;">Mosaic Wellness</span>
+    <p class="login-eyebrow">Mosaic Wellness</p>
+    <h1 class="login-title">Inventory Dashboard</h1>
+    <p class="login-sub">Sign in with your work account to continue</p>
+    <div class="login-divider"></div>
+    <button id="google-login-btn" class="btn-google" onclick="handleGoogleLogin()">
+      <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Sign in with Google
+    </button>
+    <p id="login-error" class="login-error" style="display:none"></p>
+    <p class="login-note">Restricted to <strong>@mosaicwellness.in</strong> accounts</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-shell" class="app-shell" style="display:none">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-mark">MW</div>
+        <div class="sidebar-logo-text">
+          <span class="sidebar-brand">Mosaic Wellness</span>
+          <span class="sidebar-sub">Inventory MIS</span>
+        </div>
       </div>
-      <h1 class="login-title" style="color:#ffffff;">Inventory Dashboard</h1>
-      <p class="login-sub" style="color:rgba(255,255,255,0.7);">Sign in with your Mosaic Wellness account to continue</p>
-      <button id="google-login-btn" class="google-login-btn" onclick="handleGoogleLogin()" style="background:#ffffff;color:#1a1a2e;border:none;display:flex;align-items:center;gap:10px;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;width:100%;justify-content:center;margin:8px 0;">
-        <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
-          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-        </svg>
-        Sign in with Google
+      <button class="sidebar-toggle" onclick="toggleSidebar()" title="Collapse">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
-      <p id="login-error" class="login-error" style="display:none;color:#ff6b6b;font-size:13px;margin-top:8px;"></p>
-      <p class="login-note" style="color:rgba(255,255,255,0.45);font-size:12px;margin-top:12px;">Access restricted to @mosaicwellness.in accounts</p>
     </div>
-  </div>
 
-  <!-- ══════════════════════════════════════════════
-       APP SHELL
-  ══════════════════════════════════════════════ -->
-  <div id="app-shell" class="app-shell" style="display:none">
-
-    <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar">
-      <div class="sidebar-header">
-        <img src="assets/logo.svg" alt="MW" class="sidebar-logo" onerror="this.style.display='none'" />
-        <span class="sidebar-brand">Inventory</span>
-        <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Collapse">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </button>
-      </div>
-
-      <nav class="sidebar-nav">
-        <a href="#" class="nav-item" data-module="daily" onclick="navigate('daily'); return false;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-          </svg>
-          <span>Daily Tracker</span>
-          <span id="badge-variance" class="nav-badge" style="display:none"></span>
-        </a>
-        <a href="#" class="nav-item" data-module="mtd" onclick="navigate('mtd'); return false;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
-          <span>MTD Tracker</span>
-        </a>
-        <a href="#" class="nav-item" data-module="variance" onclick="navigate('variance'); return false;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="20" x2="18" y2="10"/>
-            <line x1="12" y1="20" x2="12" y2="4"/>
-            <line x1="6"  y1="20" x2="6"  y2="14"/>
-          </svg>
-          <span>Variance Tracker</span>
-        </a>
-        <a href="#" class="nav-item" data-module="expiry" onclick="navigate('expiry'); return false;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <span>Expiry Tracker</span>
-        </a>
-        <a href="#" class="nav-item" data-module="remarks" onclick="navigate('remarks'); return false;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-          <span>Remarks</span>
-        </a>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="user-info">
-          <div id="user-avatar" class="user-avatar"></div>
-          <div class="user-details">
-            <span id="user-name" class="user-name"></span>
-            <span id="user-email" class="user-email"></span>
-          </div>
-        </div>
-        <button class="logout-btn" onclick="handleLogout()" title="Sign out">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-        </button>
-      </div>
-    </aside>
-
-    <!-- Main -->
-    <main class="main-content">
-
-      <!-- Topbar -->
-      <header class="topbar">
-        <button class="mobile-menu-btn" onclick="toggleSidebar()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="6"  x2="21" y2="6"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
-          </svg>
-        </button>
-        <div class="topbar-left">
-          <h1 id="topbar-module" class="topbar-title">Daily Tracker</h1>
-          <span id="last-updated-text" class="last-updated"></span>
-        </div>
-        <div class="topbar-right">
-          <div id="month-selector-wrap" class="month-selector-wrap" style="display:none">
-            <select id="month-select" class="month-select" onchange="onMonthChange()">
-              <option value="">Current Month</option>
-            </select>
-          </div>
-          <button class="refresh-btn" onclick="refreshData()" title="Refresh data">
-            <svg id="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      <!-- Page content — modules render here -->
-      <div id="page-content" class="page-content"></div>
-
-    </main>
-  </div>
-
-  <!-- ══════════════════════════════════════════════
-       REMARK MODAL
-  ══════════════════════════════════════════════ -->
-  <div id="remark-modal" class="modal-overlay" style="display:none" onclick="modalOverlayClick(event)">
-    <div class="modal-card" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3 id="modal-title" class="modal-title">Add Remark</h3>
-        <button class="modal-close" onclick="closeRemarkModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <div id="modal-meta" class="modal-meta"></div>
-        <textarea id="remark-input" class="remark-textarea" placeholder="Enter your remark…" rows="4" oninput="updateCharCount()"></textarea>
-        <div class="char-counter"><span id="char-count">0</span> characters</div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="closeRemarkModal()">Cancel</button>
-        <button id="submit-remark-btn" class="btn btn-primary" onclick="submitRemark()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-            <polyline points="17 21 17 13 7 13 7 21"/>
-          </svg>
-          Save &amp; Lock
-        </button>
+    <div class="sidebar-user">
+      <div id="user-avatar" class="user-avatar"></div>
+      <div class="user-info">
+        <span id="user-name" class="user-name"></span>
+        <span id="user-email" class="user-email"></span>
       </div>
     </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-module="daily" onclick="navigate('daily'); return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>Daily Tracker</span>
+        <span id="badge-replace" class="nav-badge" style="display:none"></span>
+      </a>
+      <a href="#" class="nav-item" data-module="mtd" onclick="navigate('mtd'); return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>MTD Tracker</span>
+      </a>
+      <a href="#" class="nav-item" data-module="variance" onclick="navigate('variance'); return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span>Variance Tracker</span>
+      </a>
+      <a href="#" class="nav-item" data-module="expiry" onclick="navigate('expiry'); return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Expiry Tracker</span>
+      </a>
+      <a href="#" class="nav-item" data-module="remarks" onclick="navigate('remarks'); return false;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Remarks</span>
+      </a>
+
+      <div class="nav-divider"></div>
+      <p class="nav-label">Sheets</p>
+      <a class="nav-item nav-external" href="https://docs.google.com/spreadsheets/d/1DIVGIpyvfsPVL9f80c6fnQO9fHyyDdhhgK8BRZF9U6s/edit?gid=1917601641" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="3"/></svg>
+        <span>Processed Data</span>
+        <svg class="ext-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+      <a class="nav-item nav-external" href="https://docs.google.com/spreadsheets/d/1DIVGIpyvfsPVL9f80c6fnQO9fHyyDdhhgK8BRZF9U6s/edit?gid=126229950" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Remarks Sheet</span>
+        <svg class="ext-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="handleLogout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span>Sign out</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <button class="mobile-menu-btn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-left">
+        <h1 id="topbar-module" class="topbar-title">Daily Tracker</h1>
+      </div>
+      <div class="topbar-right">
+        <div id="sync-status" class="sync-status">
+          <span class="sync-dot sync-idle" id="sync-dot"></span>
+          <span id="sync-text" class="sync-text">Not synced</span>
+        </div>
+        <div id="month-selector-wrap" class="month-selector-wrap" style="display:none">
+          <select id="month-select" class="month-select" onchange="onMonthChange()">
+            <option value="">Current Month</option>
+          </select>
+        </div>
+        <button class="btn-icon" id="btn-download" onclick="downloadCSV()" title="Download CSV" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>CSV</span>
+        </button>
+        <button class="refresh-btn" onclick="refreshData()" title="Refresh">
+          <svg id="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <div id="page-content" class="page-content"></div>
+
+  </main>
+</div>
+
+<!-- REMARK MODAL -->
+<div id="remark-modal" class="modal-overlay" style="display:none" onclick="modalOverlayClick(event)">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <p class="modal-eyebrow">Add Remark</p>
+        <h3 id="modal-title" class="modal-title"></h3>
+      </div>
+      <button class="modal-close" onclick="closeRemarkModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="modal-meta" class="modal-meta"></div>
+    <div class="modal-body">
+      <label class="field-label">Remark <span style="color:var(--red)">*</span></label>
+      <textarea id="remark-input" class="remark-textarea" placeholder="Enter your remark…" rows="4" oninput="updateCharCount()"></textarea>
+      <div class="char-count"><span id="char-count">0</span> characters</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeRemarkModal()">Cancel</button>
+      <button id="submit-remark-btn" class="btn-primary" onclick="submitRemark()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+        Save &amp; Lock
+      </button>
+    </div>
   </div>
+</div>
 
-  <!-- Loading overlay -->
-  <div id="loading-overlay" class="loading-overlay" style="display:none">
-    <div class="spinner"></div>
-    <p class="spinner-text">Loading...</p>
-  </div>
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay" class="loading-overlay" style="display:none">
+  <div class="spinner-ring"></div>
+  <p class="spinner-text">Loading…</p>
+</div>
 
-  <!-- Toast container -->
-  <div id="toast-container" class="toast-container"></div>
+<!-- TOAST -->
+<div id="toast-container" class="toast-container"></div>
 
-  <!-- ══════════════════════════════════════════════
-       SCRIPTS — ORDER MATTERS
-  ══════════════════════════════════════════════ -->
-  <script src="js/auth.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/daily.js"></script>
-  <script src="js/mtd.js"></script>
-  <script src="js/variance-tracker.js"></script>
-  <script src="js/expiry-tracker.js"></script>
-  <script src="js/remarks.js"></script>
-
+<script src="js/auth.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/daily.js"></script>
+<script src="js/mtd.js"></script>
+<script src="js/variance-tracker.js"></script>
+<script src="js/expiry-tracker.js"></script>
+<script src="js/remarks.js"></script>
 </body>
 </html>
