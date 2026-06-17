@@ -182,7 +182,7 @@ function _renderReplaceAlert(data) {
   if (!data || !data.count || data.count === 0) { wrap.innerHTML = ''; return; }
   var rows = (data.items || []).map(function(r) {
     return '<tr>' +
-      '<td>' + _esc(r.date || '') + '</td>' +
+      '<td style="font-size:12px">' + _formatAlertDate(r.date) + '</td>' +
       '<td><strong>' + _esc(r.facility || '') + '</strong></td>' +
       '<td>' + _esc(r.username || '') + '</td>' +
       '<td><code style="font-size:11px;background:var(--red-light);padding:1px 5px;border-radius:3px;color:var(--red-text)">' + _esc(r.sku || '') + '</code></td>' +
