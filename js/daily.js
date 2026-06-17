@@ -68,7 +68,20 @@ function renderDaily() {
   var cacheKey = 'iamd_daily_' + (month || 'current');
   var cached = lsGet(cacheKey);
   if (cached && cached.ts && (Date.now() - cached.ts) < 5 * 60 * 1000) {
-    _renderDailyData(cached.data);
+    // Render from cache
+    var cd = cached.data;
+    if (cd.kpi && cd.kpi.date) {
+      document.getElementById('daily-sub').textContent = 'Showing adjustments for ' + (cd.kpi.dateFormatted || cd.kpi.date);
+    }
+    _renderDailyKPIs(cd.kpi, cd.replace);
+    _renderReplaceAlert(cd.replace);
+    _renderBreakdown(cd.ft, 'brand');
+    _renderTopSKUs(cd.skus);
+    window._dailyFtData  = cd.ft;
+    window._dailyFacData = cd.fac;
+    _dailyFacView = 'type';
+    _renderFacilityTable();
+    APP._downloadRows = _buildDownloadRows(cd.kpi, cd.fac, cd.skus);
     setSyncLive(cached.data.kpi && cached.data.kpi.date);
     // Refresh in background silently
     _fetchDailyData(month, cacheKey, true);
@@ -80,20 +93,44 @@ function renderDaily() {
 }
 
 function _fetchDailyData(month, cacheKey, silent) {
+  // Batch 1: Core KPIs + REPLACE alerts (fast — reads KPI sheet only)
   Promise.all([
     apiGetDailyKPI({ month: month }),
     apiGetReplaceAlerts({ scope: 'DAILY', month: month }),
-    apiGetTopVarianceSKUs({ scope: 'DAILY', month: month }),
-    apiGetFacilityTypeSummary({ scope: 'DAILY', month: month }),
-    apiGetFacilitySummary({ scope: 'DAILY', month: month }),
-    apiGetUserSummary({ scope: 'DAILY', month: month }),
-  ]).then(function(res) {
-    var data = { kpi: res[0], replace: res[1], skus: res[2], ft: res[3], fac: res[4], users: res[5] };
-    lsSet(cacheKey, { ts: Date.now(), data: data });
-    _renderDailyData(data);
+  ]).then(function(res1) {
+    var data = { kpi: res1[0], replace: res1[1], skus: [], ft: {}, fac: {}, users: {} };
+    _renderDailyKPIs(data.kpi, data.replace);
+    _renderReplaceAlert(data.replace);
+    if (data.kpi && data.kpi.date) {
+      document.getElementById('daily-sub').textContent = 'Showing adjustments for ' + (data.kpi.dateFormatted || data.kpi.date);
+    }
     setSyncLive(data.kpi && data.kpi.date);
+
+    // Batch 2: Supplementary data (slower — reads Processed_Data)
+    Promise.all([
+      apiGetTopVarianceSKUs({ scope: 'DAILY', month: month }),
+      apiGetFacilityTypeSummary({ scope: 'DAILY', month: month }),
+      apiGetFacilitySummary({ scope: 'DAILY', month: month }),
+      apiGetUserSummary({ scope: 'DAILY', month: month }),
+    ]).then(function(res2) {
+      data.skus  = res2[0];
+      data.ft    = res2[1];
+      data.fac   = res2[2];
+      data.users = res2[3];
+      lsSet(cacheKey, { ts: Date.now(), data: data });
+      _renderBreakdown(data.ft, 'brand');
+      _renderTopSKUs(data.skus);
+      window._dailyFtData  = data.ft;
+      window._dailyFacData = data.fac;
+      _dailyFacView = 'type';
+      _renderFacilityTable();
+      APP._downloadRows = _buildDownloadRows(data.kpi, data.fac, data.skus);
+    }).catch(function(e2) {
+      console.error('Daily batch 2 error:', e2);
+      // Batch 2 failure is non-fatal — KPIs already shown
+    });
+
   }).catch(function(e) {
-    // Always clear cache on error so stale error state is never shown
     lsClear(cacheKey);
     if (!silent) {
       document.getElementById('daily-kpi-row1').innerHTML = emptyState('No data available',
