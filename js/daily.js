@@ -93,8 +93,11 @@ function _fetchDailyData(month, cacheKey, silent) {
     _renderDailyData(data);
     setSyncLive(data.kpi && data.kpi.date);
   }).catch(function(e) {
+    // Always clear cache on error so stale error state is never shown
+    lsClear(cacheKey);
     if (!silent) {
-      document.getElementById('daily-kpi-row1').innerHTML = emptyState('No data', 'Run processing first or check connection.');
+      document.getElementById('daily-kpi-row1').innerHTML = emptyState('No data available',
+        'API timeout or no data for this date. Try refreshing.');
       setSyncError();
     }
     console.error('Daily error:', e);
