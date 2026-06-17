@@ -220,6 +220,22 @@ function _renderDailyKPIs(data, replData) {
   if (badge) { badge.textContent = replCount; badge.style.display = replCount > 0 ? 'flex' : 'none'; }
 }
 
+
+function _formatAlertDate(d) {
+  if (!d) return '';
+  var s = String(d);
+  if (s.length > 10) {
+    try {
+      var dt = new Date(s);
+      if (!isNaN(dt.getTime())) {
+        var mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return dt.getDate() + ' ' + mn[dt.getMonth()] + ' ' + dt.getFullYear();
+      }
+    } catch(e) {}
+  }
+  return s.substring(0, 10);
+}
+
 function _renderReplaceAlert(data) {
   var wrap = document.getElementById('replace-alert-wrap');
   if (!wrap) return;
