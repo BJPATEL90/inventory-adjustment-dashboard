@@ -52,12 +52,12 @@ function navigate(module) {
   });
   var labels = {
     daily: 'Daily Tracker', mtd: 'MTD Tracker',
-    variance: 'Variance Tracker', expiry: 'Expiry Tracker', remarks: 'Remarks'
+    variance: 'Variance Tracker', expiry: 'Expiry Tracker', remarks: 'Remarks', 'report-logic': 'Report Logic'
   };
   document.getElementById('topbar-module').textContent = labels[module] || module;
   var showMonth = module !== 'daily';
   document.getElementById('month-selector-wrap').style.display = showMonth ? 'flex' : 'none';
-  var showDownload = (module === 'daily' || module === 'mtd' || module === 'variance');
+  var showDownload = (module === 'daily' || module === 'mtd' || module === 'variance' || module === 'expiry');
   document.getElementById('btn-download').style.display = showDownload ? 'flex' : 'none';
   APP._downloadRows = [];
   destroyCharts();
@@ -67,7 +67,8 @@ function navigate(module) {
     case 'mtd':      renderMTD();      break;
     case 'variance': renderVariance(); break;
     case 'expiry':   renderExpiry();   break;
-    case 'remarks':  renderRemarks();  break;
+    case 'remarks':       renderRemarks();      break;
+    case 'report-logic': renderReportLogic(); break;
   }
 }
 
