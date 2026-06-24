@@ -1,7 +1,14 @@
-// mtd.js — V4
-// Fixes: itemName key, chart date labels, KPI strip layout, MTD facility/user charts
+// mtd.js — V4 PATCHED
+// Changes:
+//   - Top 10 Users: replaced horizontal bar chart with Username | Variance table
+//   - Added Brandwise Breakdown + Facility Summary tables below charts
+//   - Both tables have same Brand/Facility Type toggle as Daily Tracker
 
 var _mtdCharts = {};
+var _mtdFtData  = null;
+var _mtdFacData = null;
+var _mtdBreakdownMode = 'brand';
+var _mtdFacView = 'type';
 
 function renderMTD() {
   var content = document.getElementById('page-content');
@@ -16,10 +23,14 @@ function renderMTD() {
     '</div>' +
     '<div class="kpi-strip" id="mtd-kpi-row1">' + _kpiSkels(4) + '</div>' +
     '<div class="kpi-strip-2" id="mtd-kpi-row2">' + _kpiSkels(4, true) + '</div>' +
+
+    // Trend chart — full width
     '<div class="card section-row">' +
       '<div class="card-header"><span class="card-title">Daily Trend — Added / Removed / Variance</span></div>' +
       '<div class="chart-wrap"><div class="chart-canvas" style="height:220px;"><canvas id="chart-trend"></canvas></div></div>' +
     '</div>' +
+
+    // Charts row: Facility Type chart (left) | Top 10 Users TABLE (right)
     '<div class="chart-grid">' +
       '<div class="card">' +
         '<div class="card-header"><span class="card-title">Facility Type</span></div>' +
@@ -27,9 +38,54 @@ function renderMTD() {
       '</div>' +
       '<div class="card">' +
         '<div class="card-header"><span class="card-title">Top 10 Users by Variance</span></div>' +
-        '<div class="chart-wrap"><div class="chart-canvas" style="height:200px;"><canvas id="chart-user"></canvas></div></div>' +
+        '<div class="table-wrap" id="mtd-user-table-wrap">' +
+          '<table><thead><tr>' +
+            '<th>Username</th>' +
+            '<th style="text-align:right">Variance Qty</th>' +
+          '</tr></thead>' +
+          '<tbody id="mtd-user-tbody">' + skeletonRows(2, 8) + '</tbody>' +
+          '</table>' +
+        '</div>' +
       '</div>' +
     '</div>' +
+
+    // ── NEW: Brandwise Breakdown + Facility Summary tables ──
+    '<div class="two-col section-row">' +
+      // Brandwise Breakdown
+      '<div class="card" id="mtd-card-breakdown">' +
+        '<div class="card-header">' +
+          '<span class="card-title">Brandwise Breakdown</span>' +
+          '<div class="view-toggle-group">' +
+            '<button class="view-toggle-btn active" id="mtd-bt-brand" onclick="_mtdSwitchBreakdown(\'brand\')">Brand</button>' +
+            '<button class="view-toggle-btn" id="mtd-bt-bu" onclick="_mtdSwitchBreakdown(\'bu\')">Facility Type</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="table-wrap"><table><thead><tr>' +
+          '<th id="mtd-breakdown-col-hdr">Brand</th>' +
+          '<th style="text-align:right">Added</th>' +
+          '<th style="text-align:right">Removed</th>' +
+          '<th style="text-align:right">Net</th>' +
+        '</tr></thead><tbody id="mtd-breakdown-tbody">' + skeletonRows(4, 4) + '</tbody></table></div>' +
+      '</div>' +
+      // Facility Summary
+      '<div class="card" id="mtd-card-facility">' +
+        '<div class="card-header">' +
+          '<span class="card-title">Facility Summary</span>' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<span class="card-badge" id="mtd-facility-count">—</span>' +
+            '<div class="view-toggle-group">' +
+              '<button class="view-toggle-btn active" id="mtd-fac-bt-type" onclick="_mtdFacToggle(\'type\')">By Type</button>' +
+              '<button class="view-toggle-btn" id="mtd-fac-bt-detail" onclick="_mtdFacToggle(\'detail\')">Detail</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="table-wrap" id="mtd-facility-table-wrap">' +
+          '<table><tbody>' + skeletonRows(5, 6) + '</tbody></table>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    // MTD Top SKUs — full width
     '<div class="card section-row">' +
       '<div class="card-header">' +
         '<span class="card-title">MTD Top SKUs by Variance</span>' +
@@ -47,7 +103,6 @@ function renderMTD() {
       '</div>' +
     '</div>';
 
-  // Try localStorage cache first
   var cacheKey = 'iamd_mtd_' + (month || 'current');
   var cached = lsGet(cacheKey);
   if (cached && cached.ts && (Date.now() - cached.ts) < 5 * 60 * 1000) {
@@ -79,8 +134,12 @@ function _fetchMTDData(month, cacheKey, silent) {
     apiGetFacilityTypeSummary({ scope: 'MTD', month: month }),
     apiGetUserSummary({ scope: 'MTD', month: month }),
     apiGetMTDTopSKUs({ month: month }),
+    apiGetFacilitySummary({ scope: 'MTD', month: month }),
   ]).then(function(res) {
-    var data = { mtd: res[0], trend: res[1], ft: res[2], users: res[3], skus: res[4] };
+    var data = {
+      mtd: res[0], trend: res[1], ft: res[2],
+      users: res[3], skus: res[4], fac: res[5]
+    };
     lsSet(cacheKey, { ts: Date.now(), data: data });
     _renderMTDAll(data);
     setSyncLive(data.mtd && data.mtd.month);
@@ -103,14 +162,20 @@ function _renderMTDAll(data) {
   _renderMTDKPIs(data.mtd);
   _renderTrendChart(data.trend);
   _renderFacilityTypeChart(data.ft);
-  _renderUserChart(data.users);
+  _renderUserTable(data.users);        // table instead of chart
+  _renderMTDBreakdown(data.ft, 'brand');
+  _mtdFtData  = data.ft;
+  _mtdFacData = data.fac;
+  _mtdFacView = 'type';
+  _mtdBreakdownMode = 'brand';
+  _renderMTDFacilityTable();
   _renderMTDSKUTable(data.skus);
+
   if (data.mtd && data.mtd.monthDisplay) {
     var el = document.getElementById('mtd-period-sub');
     if (el) el.textContent = 'Month-to-Date — ' + data.mtd.monthDisplay;
   }
-  // Store for CSV
-  APP._downloadRows = _buildMTDDownload(data.skus);
+  APP._downloadRows = _buildMTDDownload(data.ft, data.users, data.skus);
 }
 
 function _renderMTDKPIs(data) {
@@ -127,17 +192,17 @@ function _renderMTDKPIs(data) {
   var netBg    = netV === 0 ? '#D1FAE5' : (netV > 0 ? '#FEF3C7' : '#FEE2E2');
 
   if (row1) row1.innerHTML =
-    kpiCard('MTD Events',      fmtNum(k.totalEvents),    '#2E86C1', '#DBEAFE', 'activity') +
-    kpiCard('Total Added',     fmtNum(k.totalAddedQty),  '#059669', '#D1FAE5', 'plus-circle') +
-    kpiCard('Total Removed',   fmtNum(k.totalRemovedQty),'#D97706', '#FEF3C7', 'minus-circle') +
-    kpiCard('Net Variance',    (netV >= 0 ? '+' : '') + fmtNum(netV), netColor, netBg, 'trending-up', true);
+    kpiCard('MTD Events',    fmtNum(k.totalEvents),    '#2E86C1', '#DBEAFE', 'activity') +
+    kpiCard('Total Added',   fmtNum(k.totalAddedQty),  '#059669', '#D1FAE5', 'plus-circle') +
+    kpiCard('Total Removed', fmtNum(k.totalRemovedQty),'#D97706', '#FEF3C7', 'minus-circle') +
+    kpiCard('Net Variance',  (netV >= 0 ? '+' : '') + fmtNum(netV), netColor, netBg, 'trending-up', true);
 
   var replCount  = k.replaceCount  || 0;
   var replNetQty = k.replaceNetQty || 0;
   if (row2) row2.innerHTML =
-    kpiCard('Balanced SKUs',    fmtNum(k.balancedSKUs),       '#059669', '#D1FAE5', 'check-circle',   false, true) +
-    kpiCard('Variance SKUs',    fmtNum(k.varianceSKUs),       '#DC2626', '#FEE2E2', 'alert-triangle',  false, true) +
-    kpiCard('Facilities',       fmtNum(k.facilitiesImpacted), '#0F2035', '#E0E7EF', 'map-pin',        false, true) +
+    kpiCard('Balanced SKUs',  fmtNum(k.balancedSKUs),       '#059669', '#D1FAE5', 'check-circle',  false, true) +
+    kpiCard('Variance SKUs',  fmtNum(k.varianceSKUs),       '#DC2626', '#FEE2E2', 'alert-triangle', false, true) +
+    kpiCard('Facilities',     fmtNum(k.facilitiesImpacted), '#0F2035', '#E0E7EF', 'map-pin',        false, true) +
     kpiCard('REPLACE Net Impact',
       replCount > 0 ? (replNetQty !== 0 ? (replNetQty>0?'+':'') + fmtNum(replNetQty) : replCount + ' events') : '0',
       replCount > 0 ? '#DC2626' : '#059669',
@@ -155,10 +220,8 @@ function _renderTrendChart(data) {
   }
   if (_mtdCharts.trend) { _mtdCharts.trend.destroy(); _mtdCharts.trend = null; }
 
-  // Clean date labels — strip timezone, just show "5 Jun"
   var labels = trend.map(function(d) {
     var lbl = d.dateLabel || d.date || '';
-    // If it still has timezone info, parse and reformat
     if (lbl.length > 10) {
       try {
         var dt = new Date(lbl);
@@ -207,25 +270,123 @@ function _renderFacilityTypeChart(data) {
   });
 }
 
-function _renderUserChart(data) {
-  var canvas = document.getElementById('chart-user');
-  if (!canvas) return;
-  var rows = (data && data.users) ? data.users.slice(0, 10) : [];
-  if (!rows.length) {
-    canvas.parentElement.innerHTML = emptyState('No user data', 'No MTD user data found.');
+// ── Top 10 Users: TABLE instead of chart ─────────────────────
+function _renderUserTable(data) {
+  var tbody = document.getElementById('mtd-user-tbody');
+  if (!tbody) return;
+  var users = (data && data.users) ? data.users.slice(0, 10) : [];
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="2">' + emptyState('No user data', '') + '</td></tr>';
     return;
   }
-  if (_mtdCharts.user) { _mtdCharts.user.destroy(); _mtdCharts.user = null; }
-  _mtdCharts.user = new Chart(canvas.getContext('2d'), {
-    type: 'bar',
-    data: {
-      labels: rows.map(function(u){ return u.name || ''; }),
-      datasets: [{ label: '|Variance|', data: rows.map(function(u){ return Math.abs(u.variance || 0); }), backgroundColor: 'rgba(46,134,193,0.75)', borderRadius: 4 }]
-    },
-    options: Object.assign({}, _chartOpts(), { indexAxis: 'y' })
-  });
+  tbody.innerHTML = users.map(function(u, idx) {
+    var name = u.name || '';
+    // Trim email — show only part before @
+    var atIdx = name.indexOf('@');
+    if (atIdx > 0) name = name.substring(0, atIdx);
+    var vQty = parseInt(u.variance) || 0;
+    var vStr = (vQty >= 0 ? '+' : '') + fmtNum(Math.abs(vQty));
+    var vColor = vQty > 0 ? 'var(--orange)' : vQty < 0 ? 'var(--red, #DC2626)' : 'var(--text-muted)';
+    return '<tr>' +
+      '<td style="font-size:13px;">' +
+        '<span style="color:var(--text-muted);font-size:11px;margin-right:6px;">' + (idx + 1) + '</span>' +
+        _esc(name) +
+      '</td>' +
+      '<td style="text-align:right;font-weight:600;color:' + vColor + ';">' + vStr + '</td>' +
+      '</tr>';
+  }).join('');
 }
 
+// ── Brandwise Breakdown table ─────────────────────────────────
+function _mtdSwitchBreakdown(mode) {
+  _mtdBreakdownMode = mode;
+  var brandBtn = document.getElementById('mtd-bt-brand');
+  var buBtn    = document.getElementById('mtd-bt-bu');
+  var hdr      = document.getElementById('mtd-breakdown-col-hdr');
+  if (brandBtn) brandBtn.classList.toggle('active', mode === 'brand');
+  if (buBtn)    buBtn.classList.toggle('active', mode === 'bu');
+  if (hdr)      hdr.textContent = mode === 'brand' ? 'Brand' : 'Facility Type';
+  _renderMTDBreakdown(_mtdFtData, mode);
+}
+
+function _renderMTDBreakdown(ftData, mode) {
+  var tbody = document.getElementById('mtd-breakdown-tbody');
+  if (!tbody) return;
+  var rows = [];
+  if (mode === 'bu') {
+    rows = (ftData && ftData.facilityTypes) ? ftData.facilityTypes : [];
+  } else {
+    rows = (ftData && ftData.brands) ? ftData.brands : [];
+    if (!rows.length && ftData && ftData.facilityTypes) rows = ftData.facilityTypes;
+  }
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4">' + emptyState('No data', '') + '</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(r) {
+    var net = (r.added || 0) - (r.removed || 0);
+    var cls = net > 0 ? 'variance-pos' : net < 0 ? 'variance-neg' : 'variance-zero';
+    return '<tr>' +
+      '<td><span class="badge badge-blue">' + _esc(r.name || r.brand || r.facilityType || '—') + '</span></td>' +
+      '<td class="num" style="color:var(--green)">+' + fmtNum(r.added) + '</td>' +
+      '<td class="num" style="color:var(--orange)">' + fmtNum(r.removed) + '</td>' +
+      '<td class="num"><span class="' + cls + '">' + (net >= 0 ? '+' : '') + fmtNum(net) + '</span></td>' +
+      '</tr>';
+  }).join('');
+}
+
+// ── Facility Summary table ─────────────────────────────────────
+function _mtdFacToggle(view) {
+  _mtdFacView = view;
+  var typeBtn   = document.getElementById('mtd-fac-bt-type');
+  var detailBtn = document.getElementById('mtd-fac-bt-detail');
+  if (typeBtn)   typeBtn.classList.toggle('active', view === 'type');
+  if (detailBtn) detailBtn.classList.toggle('active', view === 'detail');
+  _renderMTDFacilityTable();
+}
+
+function _renderMTDFacilityTable() {
+  var wrap    = document.getElementById('mtd-facility-table-wrap');
+  var countEl = document.getElementById('mtd-facility-count');
+  if (!wrap) return;
+
+  var rows;
+  if (_mtdFacView === 'type') {
+    rows = (_mtdFtData && _mtdFtData.facilityTypes) ? _mtdFtData.facilityTypes : [];
+  } else {
+    rows = (_mtdFacData && _mtdFacData.facilities) ? _mtdFacData.facilities : [];
+  }
+
+  if (countEl) countEl.textContent = rows.length + ' facilities';
+  if (!rows.length) { wrap.innerHTML = emptyState('No facility data', ''); return; }
+
+  var hdr = _mtdFacView === 'type' ? '<th>Type</th>' : '<th>Facility</th>';
+  var tbody = rows.map(function(f) {
+    var net = f.variance !== undefined ? f.variance : (f.added || 0) - (f.removed || 0);
+    var netCls = net > 0 ? 'variance-pos' : net < 0 ? 'variance-neg' : 'variance-zero';
+    return '<tr>' +
+      '<td>' +
+        '<div>' + _esc(f.name || f.facilityType || '') + '</div>' +
+        (_mtdFacView === 'detail' && f.facilityType
+          ? '<span class="fac-type-pill">' + _esc(f.facilityType) + '</span>' : '') +
+      '</td>' +
+      '<td class="num" style="color:var(--green)">+' + fmtNum(f.added) + '</td>' +
+      '<td class="num" style="color:var(--orange)">' + fmtNum(f.removed) + '</td>' +
+      '<td class="num"><span class="' + netCls + '">' + (net >= 0 ? '+' : '') + fmtNum(net) + '</span></td>' +
+      '<td class="num">' + fmtNum(f.events) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<table><thead><tr>' + hdr +
+    '<th style="text-align:right">Added</th>' +
+    '<th style="text-align:right">Removed</th>' +
+    '<th style="text-align:right">Net</th>' +
+    '<th style="text-align:right">Events</th>' +
+    '</tr></thead><tbody>' + tbody + '</tbody></table>';
+}
+
+// ── MTD Top SKUs ──────────────────────────────────────────────
 function _renderMTDSKUTable(data) {
   var tbody = document.getElementById('mtd-sku-tbody');
   if (!tbody) return;
@@ -235,7 +396,6 @@ function _renderMTDSKUTable(data) {
     return;
   }
   tbody.innerHTML = skus.map(function(s) {
-    // Backend may return 'item' or 'itemName' — handle both
     var itemName = s.itemName || s.item || '—';
     return '<tr>' +
       '<td><div class="sku-code">' + _esc(s.sku || '') + '</div></td>' +
@@ -247,11 +407,36 @@ function _renderMTDSKUTable(data) {
   }).join('');
 }
 
-function _buildMTDDownload(data) {
-  if (!data || !data.skus) return [];
-  return data.skus.map(function(s) {
-    return { SKU: s.sku, Item_Name: s.itemName || s.item || '', Added: s.added, Removed: s.removed, Variance: s.variance };
-  });
+function _buildMTDDownload(ftData, usrData, skuData) {
+  var sections = [];
+  if (ftData && ftData.facilityTypes && ftData.facilityTypes.length) {
+    sections.push({
+      title: 'Facility Type Summary (MTD)',
+      rows: ftData.facilityTypes.map(function(f) {
+        return { Facility_Type: f.name || '', Added: f.added || 0, Removed: f.removed || 0, Variance: f.variance || 0, Events: f.events || 0 };
+      })
+    });
+  }
+  if (usrData && usrData.users && usrData.users.length) {
+    sections.push({
+      title: 'User Summary (MTD)',
+      rows: usrData.users.map(function(u) {
+        var name = u.name || '';
+        var at = name.indexOf('@');
+        if (at > 0) name = name.substring(0, at);
+        return { Username: name, Variance_Qty: u.variance || 0, Events: u.events || 0 };
+      })
+    });
+  }
+  if (skuData && skuData.skus && skuData.skus.length) {
+    sections.push({
+      title: 'MTD Top SKUs by Variance',
+      rows: skuData.skus.map(function(s) {
+        return { SKU: s.sku, Item_Name: s.itemName || s.item || '', Added: s.added, Removed: s.removed, Variance: s.variance };
+      })
+    });
+  }
+  return sections;
 }
 
 function _chartOpts() {
