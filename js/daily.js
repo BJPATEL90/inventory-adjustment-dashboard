@@ -1,6 +1,9 @@
-// daily.js — V4
-// Yesterday default, 2-row KPI strip, REPLACE KPI card,
-// brand/BU breakdown toggle, sortable facility table, localStorage cache
+// daily.js — V4 PATCHED
+// Changes:
+//   - Layout: [Brandwise Breakdown | Facility Summary] top row
+//             [Top Variance SKUs] full width below
+//   - REPLACE alert table: added Net Impact header, SKU shows code + item name
+//   - Header renamed: "Breakdown" → "Brandwise Breakdown"
 
 var _dailySortCol = '';
 var _dailySortAsc = true;
@@ -13,7 +16,6 @@ function renderDaily() {
   var root = document.getElementById('daily-root');
   var month = APP.currentMonth || '';
 
-  // Yesterday's date as default
   var yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   var yStr = yesterday.getFullYear() + '-' +
@@ -29,10 +31,12 @@ function renderDaily() {
     '<div id="replace-alert-wrap"></div>' +
     '<div class="kpi-strip" id="daily-kpi-row1">' + _kpiSkels(4) + '</div>' +
     '<div class="kpi-strip-2" id="daily-kpi-row2">' + _kpiSkels(4, true) + '</div>' +
+
+    // TOP ROW: Brandwise Breakdown (left) | Facility Summary (right)
     '<div class="two-col">' +
       '<div class="card" id="card-breakdown">' +
         '<div class="card-header">' +
-          '<span class="card-title">Breakdown</span>' +
+          '<span class="card-title">Brandwise Breakdown</span>' +
           '<div class="view-toggle-group">' +
             '<button class="view-toggle-btn active" id="bt-brand" onclick="_dailySwitchBreakdown(\'brand\')">Brand</button>' +
             '<button class="view-toggle-btn" id="bt-bu" onclick="_dailySwitchBreakdown(\'bu\')">Facility Type</button>' +
@@ -43,31 +47,33 @@ function renderDaily() {
           '<th style="text-align:right">Added</th><th style="text-align:right">Removed</th><th style="text-align:right">Net</th>' +
         '</tr></thead><tbody id="breakdown-tbody">' + skeletonRows(4, 4) + '</tbody></table></div>' +
       '</div>' +
-      '<div class="card" id="card-top-skus">' +
-        '<div class="card-header"><span class="card-title">Top Variance SKUs</span><span class="card-badge" id="top-sku-badge">—</span></div>' +
-        '<div class="table-wrap"><table><thead><tr>' +
-          '<th>SKU / Item</th><th style="text-align:right">Added</th><th style="text-align:right">Removed</th><th style="text-align:right">Variance</th>' +
-        '</tr></thead><tbody id="top-sku-tbody">' + skeletonRows(4, 6) + '</tbody></table></div>' +
-      '</div>' +
-    '</div>' +
-    '<div class="card section-row" id="card-facility">' +
-      '<div class="card-header">' +
-        '<span class="card-title">Facility Summary</span>' +
-        '<div style="display:flex;align-items:center;gap:10px;">' +
-          '<span class="card-badge" id="facility-count">—</span>' +
-          '<div class="view-toggle-group">' +
-            '<button class="view-toggle-btn active" id="fac-bt-type" onclick="_dailyFacToggle(\'type\')">By Type</button>' +
-            '<button class="view-toggle-btn" id="fac-bt-detail" onclick="_dailyFacToggle(\'detail\')">Detail</button>' +
+
+      // Facility Summary (right side of top row)
+      '<div class="card" id="card-facility">' +
+        '<div class="card-header">' +
+          '<span class="card-title">Facility Summary</span>' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<span class="card-badge" id="facility-count">—</span>' +
+            '<div class="view-toggle-group">' +
+              '<button class="view-toggle-btn active" id="fac-bt-type" onclick="_dailyFacToggle(\'type\')">By Type</button>' +
+              '<button class="view-toggle-btn" id="fac-bt-detail" onclick="_dailyFacToggle(\'detail\')">Detail</button>' +
+            '</div>' +
           '</div>' +
         '</div>' +
+        '<div class="table-wrap" id="facility-table-wrap"><table><tbody>' + skeletonRows(5, 6) + '</tbody></table></div>' +
       '</div>' +
-      '<div class="table-wrap" id="facility-table-wrap"><table><tbody>' + skeletonRows(5, 6) + '</tbody></table></div>' +
+    '</div>' +
+
+    // BOTTOM ROW: Top Variance SKUs full width
+    '<div class="card section-row" id="card-top-skus">' +
+      '<div class="card-header"><span class="card-title">Top Variance SKUs</span><span class="card-badge" id="top-sku-badge">—</span></div>' +
+      '<div class="table-wrap"><table><thead><tr>' +
+        '<th>SKU / Item</th><th style="text-align:right">Added</th><th style="text-align:right">Removed</th><th style="text-align:right">Variance</th>' +
+      '</tr></thead><tbody id="top-sku-tbody">' + skeletonRows(4, 6) + '</tbody></table></div>' +
     '</div>';
 
-  // Check localStorage cache first
   var cacheKey = 'iamd_daily_' + (month || 'current');
   var cached = lsGet(cacheKey);
-  // Only use cache if complete — must have kpi AND skus data
   var cacheValid = cached && cached.ts &&
     (Date.now() - cached.ts) < 5 * 60 * 1000 &&
     cached.data && cached.data.kpi && cached.data.kpi.date &&
@@ -89,14 +95,12 @@ function renderDaily() {
     _fetchDailyData(month, cacheKey, true);
     return;
   }
-  // Clear any stale/incomplete cache
   if (cached) lsClear(cacheKey);
   setSyncIdle();
   _fetchDailyData(month, cacheKey, false);
 }
 
 function _fetchDailyData(month, cacheKey, silent) {
-  // Batch 1: Core KPIs + REPLACE alerts (fast — reads KPI sheet only)
   Promise.all([
     apiGetDailyKPI({ month: month }),
     apiGetReplaceAlerts({ scope: 'DAILY', month: month }),
@@ -109,7 +113,6 @@ function _fetchDailyData(month, cacheKey, silent) {
     }
     setSyncLive(data.kpi && data.kpi.date);
 
-    // Batch 2: Supplementary data (slower — reads Processed_Data)
     Promise.all([
       apiGetTopVarianceSKUs({ scope: 'DAILY', month: month }),
       apiGetFacilityTypeSummary({ scope: 'DAILY', month: month }),
@@ -120,7 +123,6 @@ function _fetchDailyData(month, cacheKey, silent) {
       data.ft    = res2[1];
       data.fac   = res2[2];
       data.users = res2[3];
-      // Only cache when batch 2 completes — ensures full data stored
       if (data.kpi && data.skus && data.skus.skus && data.skus.skus.length > 0) {
         lsSet(cacheKey, { ts: Date.now(), data: data });
       }
@@ -133,7 +135,6 @@ function _fetchDailyData(month, cacheKey, silent) {
       APP._downloadRows = _buildDownloadRows(data.kpi, data.fac, data.skus);
     }).catch(function(e2) {
       console.error('Daily batch 2 error:', e2);
-      // Batch 2 failure is non-fatal — KPIs already shown
     });
 
   }).catch(function(e) {
@@ -149,32 +150,6 @@ function _fetchDailyData(month, cacheKey, silent) {
     }
     console.error('Daily error:', e);
   });
-}
-
-function _renderDailyData(data) {
-  var kpiData = data.kpi;
-  var replData = data.replace;
-  var skuData  = data.skus;
-  var ftData   = data.ft;
-  var facData  = data.fac;
-  var usrData  = data.users;
-
-  if (kpiData && kpiData.date) {
-    document.getElementById('daily-sub').textContent = 'Showing adjustments for ' + (kpiData.dateFormatted || kpiData.date);
-  }
-
-  _renderDailyKPIs(kpiData, replData);
-  _renderReplaceAlert(replData);
-  _renderBreakdown(ftData, 'brand');
-  _renderTopSKUs(skuData);
-
-  window._dailyFtData  = ftData;
-  window._dailyFacData = facData;
-  _dailyFacView = 'type';
-  _renderFacilityTable();
-
-  // Store for CSV
-  APP._downloadRows = _buildDownloadRows(kpiData, facData, skuData);
 }
 
 function _kpiSkels(n, small) {
@@ -221,11 +196,9 @@ function _renderDailyKPIs(data, replData) {
       replCount > 0 ? '#FEE2E2' : '#D1FAE5',
       'alert-octagon', replNetQty !== 0, true);
 
-  // Update nav badge
   var badge = document.getElementById('badge-replace');
   if (badge) { badge.textContent = replCount; badge.style.display = replCount > 0 ? 'flex' : 'none'; }
 }
-
 
 function _formatAlertDate(d) {
   if (!d) return '';
@@ -247,18 +220,25 @@ function _renderReplaceAlert(data) {
   if (!wrap) return;
   if (!data || !data.count || data.count === 0) { wrap.innerHTML = ''; return; }
   var rows = (data.items || []).map(function(r) {
+    var netQty = r.replaceNetQty || 0;
+    var netColor = netQty < 0 ? 'var(--red)' : 'var(--green)';
     return '<tr>' +
       '<td style="font-size:12px">' + _formatAlertDate(r.date) + '</td>' +
       '<td><strong>' + _esc(r.facility || '') + '</strong></td>' +
       '<td>' + _esc(r.username || '') + '</td>' +
-      '<td><code style="font-size:11px;background:var(--red-light);padding:1px 5px;border-radius:3px;color:var(--red-text)">' + _esc(r.sku || '') + '</code></td>' +
-      '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(r.itemName || '') + '</td>' +
+      // SKU: code on top line, item name on second line
+      '<td>' +
+        '<code style="font-size:11px;background:var(--red-light);padding:1px 5px;border-radius:3px;color:var(--red-text);display:block;margin-bottom:2px;">' + _esc(r.sku || '') + '</code>' +
+        '<span style="font-size:11px;color:var(--text-muted);">' + _esc(r.itemName || '') + '</span>' +
+      '</td>' +
       '<td class="num" style="color:var(--green)">+' + fmtNum(r.addedQty) + '</td>' +
       '<td class="num" style="color:var(--orange)">' + fmtNum(r.removedQty) + '</td>' +
-      '<td class="num" style="color:' + (r.replaceNetQty < 0 ? 'var(--red)' : 'var(--green)') + ';font-weight:700;">' +
-        (r.replaceNetQty > 0 ? '+' : '') + fmtNum(r.replaceNetQty) + '</td>' +
+      '<td class="num" style="color:' + netColor + ';font-weight:700;">' +
+        (netQty > 0 ? '+' : '') + fmtNum(netQty) +
+      '</td>' +
       '</tr>';
   }).join('');
+
   wrap.innerHTML =
     '<div class="replace-alert">' +
       '<div class="replace-alert-header">' +
@@ -269,7 +249,15 @@ function _renderReplaceAlert(data) {
         '</div>' +
       '</div>' +
       '<div class="replace-alert-table table-wrap" style="margin-top:10px;">' +
-        '<table><thead><tr><th>Date</th><th>Facility</th><th>User</th><th>SKU</th><th>Item</th><th style="text-align:right">Added</th><th style="text-align:right">Removed</th></tr></thead>' +
+        '<table><thead><tr>' +
+          '<th>Date</th>' +
+          '<th>Facility</th>' +
+          '<th>User</th>' +
+          '<th>SKU / Item</th>' +
+          '<th style="text-align:right">Added</th>' +
+          '<th style="text-align:right">Removed</th>' +
+          '<th style="text-align:right">Net Impact</th>' +
+        '</tr></thead>' +
         '<tbody>' + rows + '</tbody></table>' +
       '</div>' +
     '</div>';
@@ -291,7 +279,6 @@ function _renderBreakdown(ftData, mode) {
   if (mode === 'bu') {
     rows = (ftData && ftData.facilityTypes) ? ftData.facilityTypes : [];
   } else {
-    // Use ftData brands if available
     rows = (ftData && ftData.brands) ? ftData.brands : [];
     if (!rows.length && ftData && ftData.facilityTypes) rows = ftData.facilityTypes;
   }
@@ -299,9 +286,8 @@ function _renderBreakdown(ftData, mode) {
   tbody.innerHTML = rows.map(function(r) {
     var net = (r.added || 0) - (r.removed || 0);
     var cls = net > 0 ? 'variance-pos' : net < 0 ? 'variance-neg' : 'variance-zero';
-    var badgeCls = 'badge-blue';
     return '<tr>' +
-      '<td><span class="badge ' + badgeCls + '">' + _esc(r.name || r.brand || r.facilityType || '—') + '</span></td>' +
+      '<td><span class="badge badge-blue">' + _esc(r.name || r.brand || r.facilityType || '—') + '</span></td>' +
       '<td class="num" style="color:var(--green)">+' + fmtNum(r.added) + '</td>' +
       '<td class="num" style="color:var(--orange)">' + fmtNum(r.removed) + '</td>' +
       '<td class="num"><span class="' + cls + '">' + (net >= 0 ? '+' : '') + fmtNum(net) + '</span></td>' +
@@ -315,10 +301,16 @@ function _renderTopSKUs(data) {
   if (!tbody) return;
   var skus = (data && data.skus) ? data.skus : [];
   if (badge) badge.textContent = skus.length + ' SKUs';
-  if (!skus.length) { tbody.innerHTML = '<tr><td colspan="4">' + emptyState('No variance SKUs', 'All SKUs balanced today.') + '</td></tr>'; return; }
+  if (!skus.length) {
+    tbody.innerHTML = '<tr><td colspan="4">' + emptyState('No variance SKUs', 'All SKUs balanced today.') + '</td></tr>';
+    return;
+  }
   tbody.innerHTML = skus.map(function(s) {
     return '<tr>' +
-      '<td><div class="sku-code">' + _esc(s.sku) + '</div><div class="sku-name">' + _esc(s.itemName) + '</div></td>' +
+      '<td>' +
+        '<div class="sku-code">' + _esc(s.sku || '') + '</div>' +
+        '<div class="sku-name">' + _esc(s.itemName || s.item || '') + '</div>' +
+      '</td>' +
       '<td class="num" style="color:var(--green)">+' + fmtNum(s.added) + '</td>' +
       '<td class="num" style="color:var(--orange)">' + fmtNum(s.removed) + '</td>' +
       '<td class="num">' + fmtVar(s.variance) + '</td>' +
@@ -334,7 +326,7 @@ function _dailyFacToggle(view) {
 }
 
 function _renderFacilityTable() {
-  var wrap = document.getElementById('facility-table-wrap');
+  var wrap    = document.getElementById('facility-table-wrap');
   var countEl = document.getElementById('facility-count');
   if (!wrap) return;
 
@@ -347,7 +339,6 @@ function _renderFacilityTable() {
 
   _dailyFacRows = rows;
   if (countEl) countEl.textContent = rows.length + ' facilities';
-
   if (!rows.length) { wrap.innerHTML = emptyState('No facility data', ''); return; }
 
   var hdr = _dailyFacView === 'type'
@@ -355,13 +346,13 @@ function _renderFacilityTable() {
     : '<th onclick="_sortFacility(\'name\')">Facility</th>';
 
   var tbody = rows.map(function(f) {
-    var net = (f.added || f.variance || 0) - (f.removed || 0);
-    if (f.variance !== undefined) net = f.variance;
+    var net = f.variance !== undefined ? f.variance : (f.added || 0) - (f.removed || 0);
     var netCls = net > 0 ? 'variance-pos' : net < 0 ? 'variance-neg' : 'variance-zero';
     return '<tr>' +
       '<td>' +
         '<div>' + _esc(f.name || f.facilityType || '') + '</div>' +
-        (_dailyFacView === 'detail' && f.facilityType ? '<span class="fac-type-pill">' + _esc(f.facilityType) + '</span>' : '') +
+        (_dailyFacView === 'detail' && f.facilityType
+          ? '<span class="fac-type-pill">' + _esc(f.facilityType) + '</span>' : '') +
       '</td>' +
       '<td class="num" style="color:var(--green)">+' + fmtNum(f.added) + '</td>' +
       '<td class="num" style="color:var(--orange)">' + fmtNum(f.removed) + '</td>' +
@@ -401,7 +392,11 @@ function _buildDownloadRows(kpiData, facData, skuData) {
   var rows = [];
   if (facData && facData.facilities) {
     facData.facilities.forEach(function(f) {
-      rows.push({ Facility: f.name, Type: f.facilityType || '', Added: f.added || 0, Removed: f.removed || 0, Variance: f.variance || 0, Events: f.events || 0 });
+      rows.push({
+        Facility: f.name, Type: f.facilityType || '',
+        Added: f.added || 0, Removed: f.removed || 0,
+        Variance: f.variance || 0, Events: f.events || 0
+      });
     });
   }
   return rows;
