@@ -93,10 +93,10 @@ function renderMTD() {
       '</div>' +
       '<div class="table-wrap">' +
         '<table><thead><tr>' +
-          '<th>SKU</th><th>Item Name</th>' +
-          '<th style="text-align:right">Added</th>' +
-          '<th style="text-align:right">Removed</th>' +
-          '<th style="text-align:right">Variance</th>' +
+            '<th style="width:30%">SKU / Item</th>' +
+            '<th style="text-align:right">Added</th>' +
+            '<th style="text-align:right">Removed</th>' +
+            '<th style="text-align:right">Variance</th>'
         '</tr></thead>' +
         '<tbody id="mtd-sku-tbody">' + skeletonRows(5, 8) + '</tbody>' +
         '</table>' +
@@ -398,8 +398,10 @@ function _renderMTDSKUTable(data) {
   tbody.innerHTML = skus.map(function(s) {
     var itemName = s.itemName || s.item || '—';
     return '<tr>' +
-      '<td><div class="sku-code">' + _esc(s.sku || '') + '</div></td>' +
-      '<td class="wrap" style="max-width:200px;">' + _esc(itemName) + '</td>' +
+        '<td style="max-width:280px">' +
+          '<div class="sku-code">' + _esc(s.sku || '') + '</div>' +
+          '<div class="sku-name" style="white-space:normal;line-height:1.3;">' + _esc(itemName) + '</div>' +
+        '</td>' +
       '<td class="num" style="color:var(--green)">+' + fmtNum(s.added) + '</td>' +
       '<td class="num" style="color:var(--orange)">' + fmtNum(s.removed) + '</td>' +
       '<td class="num">' + fmtVar(s.variance) + '</td>' +
