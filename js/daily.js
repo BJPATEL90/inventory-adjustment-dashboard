@@ -68,7 +68,7 @@ function renderDaily() {
     '<div class="card section-row" id="card-top-skus">' +
       '<div class="card-header"><span class="card-title">Top Variance SKUs</span><span class="card-badge" id="top-sku-badge">—</span></div>' +
       '<div class="table-wrap"><table><thead><tr>' +
-        '<th>SKU / Item</th><th style="text-align:right">Added</th><th style="text-align:right">Removed</th><th style="text-align:right">Variance</th>' +
+        '<th style="width:45%">SKU / Item</th><th style="text-align:right">Added</th><th style="text-align:right">Removed</th><th style="text-align:right">Variance</th>' +
       '</tr></thead><tbody id="top-sku-tbody">' + skeletonRows(4, 6) + '</tbody></table></div>' +
     '</div>';
 
@@ -307,9 +307,9 @@ function _renderTopSKUs(data) {
   }
   tbody.innerHTML = skus.map(function(s) {
     return '<tr>' +
-      '<td>' +
+      '<td style="max-width:320px">' +
         '<div class="sku-code">' + _esc(s.sku || '') + '</div>' +
-        '<div class="sku-name">' + _esc(s.itemName || s.item || '') + '</div>' +
+        '<div class="sku-name" style="white-space:normal;line-height:1.3;">' + _esc(s.itemName || s.item || '') + '</div>' +
       '</td>' +
       '<td class="num" style="color:var(--green)">+' + fmtNum(s.added) + '</td>' +
       '<td class="num" style="color:var(--orange)">' + fmtNum(s.removed) + '</td>' +
