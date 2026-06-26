@@ -1,12 +1,18 @@
-// app.js — V4
-// localStorage cache, keep-alive ping, status bar, download CSV
+// app.js — V4 PATCHED
+// Changes:
+//   - downloadCSV fetches full Processed_Data for current month
+//     with columns: Process_Date, Facility_Raw, Facility_Display,
+//     Facility_Type, Brand, Username, SKU_Code, Item_Name,
+//     Added_Qty, Removed_Qty, Variance_Qty, Status,
+//     Has_Replace, Replace_Qty, Source_Remark
+//   - Works from any module (daily, mtd, variance, remarks etc)
 
 var APP = {
   currentModule: 'daily',
   currentMonth: '',
   latestDate: null,
   archiveMonths: [],
-  _downloadRows: [],  // holds current table rows for CSV export
+  _downloadRows: [],
 };
 
 var SHEET_LINKS = {
@@ -52,7 +58,8 @@ function navigate(module) {
   });
   var labels = {
     daily: 'Daily Tracker', mtd: 'MTD Tracker',
-    variance: 'Variance Tracker', expiry: 'Expiry Tracker', remarks: 'Remarks', 'report-logic': 'Report Logic'
+    variance: 'Variance Tracker', expiry: 'Expiry Tracker',
+    remarks: 'Remarks', 'report-logic': 'Report Logic'
   };
   document.getElementById('topbar-module').textContent = labels[module] || module;
   var showMonth = module !== 'daily';
@@ -63,11 +70,11 @@ function navigate(module) {
   destroyCharts();
   document.getElementById('page-content').innerHTML = '';
   switch (module) {
-    case 'daily':    renderDaily();    break;
-    case 'mtd':      renderMTD();      break;
-    case 'variance': renderVariance(); break;
-    case 'expiry':   renderExpiry();   break;
-    case 'remarks':       renderRemarks();      break;
+    case 'daily':        renderDaily();       break;
+    case 'mtd':          renderMTD();         break;
+    case 'variance':     renderVariance();    break;
+    case 'expiry':       renderExpiry();      break;
+    case 'remarks':      renderRemarks();     break;
     case 'report-logic': renderReportLogic(); break;
   }
 }
@@ -95,14 +102,12 @@ function setSyncStatus(state, text) {
   dot.className = 'sync-dot sync-' + state;
   if (txt) txt.textContent = text;
 }
-
 function setSyncLive(dateStr) {
   var now = new Date();
   var t = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
   var label = dateStr ? 'Data: ' + dateStr + ' · ' + t : 'Synced ' + t;
   setSyncStatus('live', label);
 }
-
 function setSyncError() { setSyncStatus('error', 'Sync failed'); }
 function setSyncIdle()  { setSyncStatus('idle', 'Loading…'); }
 
@@ -149,10 +154,7 @@ function showToast(message, type) {
   }, 3500);
 }
 
-
-// ── Month Select Builder ───────────────────────────────────────────────────────
-// Builds a <select> dropdown matching the style of the topbar month selector.
-// Populated from APP.archiveMonths + "Current Month" option.
+// ── Month Select Builder ───────────────────────────────────────
 function _buildMonthSelect(id, selectedMonth, onchangeFn) {
   var now = new Date();
   var currentMonthKey = now.getFullYear() + '-' + (now.getMonth()+1<10?'0':'') + (now.getMonth()+1);
@@ -164,19 +166,84 @@ function _buildMonthSelect(id, selectedMonth, onchangeFn) {
 }
 
 // ── Download CSV ───────────────────────────────────────────────
+// Always fetches full Processed_Data for the current month
+// Columns: Process_Date, Facility_Raw, Facility_Display, Facility_Type,
+//          Brand, Username, SKU_Code, Item_Name, Added_Qty, Removed_Qty,
+//          Variance_Qty, Status, Has_Replace, Replace_Qty, Source_Remark
+
+var _CSV_COLS = [
+  'Process_Date','Facility_Raw','Facility_Display','Facility_Type','Brand',
+  'Username','SKU_Code','Item_Name','Added_Qty','Removed_Qty',
+  'Variance_Qty','Status','Has_Replace','Replace_Qty','Source_Remark'
+];
+
 function downloadCSV() {
-  var rows = APP._downloadRows;
-  if (!rows || !rows.length) { showToast('No data to download', 'info'); return; }
-  var headers = Object.keys(rows[0]);
-  var csv = [headers.join(',')].concat(rows.map(function(r) {
-    return headers.map(function(h) {
-      return '"' + String(r[h] || '').replace(/"/g, '""') + '"';
+  showToast('Preparing download…', 'info');
+
+  // Determine month — use current selection or default to current month
+  var now = new Date();
+  var m1  = now.getMonth()+1;
+  var month = APP.currentMonth || (now.getFullYear() + '-' + (m1<10?'0'+m1:''+m1));
+
+  apiFetch('getVarianceData', { month: month }, true)
+    .then(function(data) {
+      var records = (data && data.rows) ? data.rows : (Array.isArray(data) ? data : []);
+      if (!records.length) {
+        showToast('No data available for this month', 'info');
+        return;
+      }
+      _doCSVDownload(records, month);
+    })
+    .catch(function(e) {
+      // Fallback: try getVariance endpoint
+      apiFetch('getVariance', { month: month }, true)
+        .then(function(records) {
+          if (!records || !records.length) {
+            showToast('No data available for this month', 'info');
+            return;
+          }
+          _doCSVDownload(records, month);
+        })
+        .catch(function() {
+          showToast('Download failed — please try again', 'error');
+        });
+    });
+}
+
+function _normDateForCSV(raw) {
+  if (!raw) return '';
+  if (typeof raw === 'object' && raw instanceof Date) {
+    var mo = raw.getMonth()+1; var dy = raw.getDate();
+    return raw.getFullYear()+'-'+(mo<10?'0'+mo:''+mo)+'-'+(dy<10?'0'+dy:''+dy);
+  }
+  var s = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (s.length > 10) {
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      var mo2=d.getMonth()+1; var dy2=d.getDate();
+      return d.getFullYear()+'-'+(mo2<10?'0'+mo2:''+mo2)+'-'+(dy2<10?'0'+dy2:''+dy2);
+    }
+  }
+  return s.substring(0,10);
+}
+
+function _doCSVDownload(records, month) {
+  var csv = [_CSV_COLS.join(',')].concat(records.map(function(r) {
+    return _CSV_COLS.map(function(col) {
+      var val = r[col];
+      if (col === 'Process_Date') val = _normDateForCSV(val);
+      else if (col === 'Username') val = String(val || '').split('@')[0];
+      else val = String(val || '');
+      return '"' + val.replace(/"/g, '""') + '"';
     }).join(',');
   })).join('\n');
+
   var a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'inventory_' + APP.currentModule + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = 'processed_data_' + month + '_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
+  showToast('Downloaded ' + records.length + ' records', 'success');
 }
 
 // ── Remark modal ───────────────────────────────────────────────
@@ -204,16 +271,23 @@ function submitRemark() {
   if (!text) { showToast('Please enter a remark', 'error'); return; }
   var btn = document.getElementById('submit-remark-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
-  apiAddRemark({ remarkKey: _remarkPending.remarkKey, date: _remarkPending.date, facility: _remarkPending.facility, username: _remarkPending.username, sku: _remarkPending.sku, remarkText: text })
-    .then(function() {
-      closeRemarkModal(); clearAPICache();
-      showToast('Remark saved', 'success');
-    })
-    .catch(function(e) { showToast(e.message || 'Failed to save', 'error'); })
-    .finally(function() {
-      btn.disabled = false;
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Save & Lock';
-    });
+  apiAddRemark({
+    remarkKey: _remarkPending.remarkKey,
+    date: _remarkPending.date,
+    facility: _remarkPending.facility,
+    username: _remarkPending.username,
+    sku: _remarkPending.sku,
+    remarkText: text
+  }).then(function() {
+    closeRemarkModal();
+    clearAPICache();
+    showToast('Remark saved', 'success');
+  }).catch(function(e) {
+    showToast(e.message || 'Failed to save', 'error');
+  }).finally(function() {
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Save & Lock';
+  });
 }
 
 // ── Shared helpers ─────────────────────────────────────────────
