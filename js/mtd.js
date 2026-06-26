@@ -285,7 +285,7 @@ function _renderUserTable(data) {
     var atIdx = name.indexOf('@');
     if (atIdx > 0) name = name.substring(0, atIdx);
     var vQty = parseInt(u.variance) || 0;
-    var vStr = (vQty >= 0 ? '+' : '') + fmtNum(Math.abs(vQty));
+    var vStr = (vQty >= 0 ? '+' : '-') + fmtNum(Math.abs(vQty));
     var vColor = vQty > 0 ? 'var(--orange)' : vQty < 0 ? 'var(--red, #DC2626)' : 'var(--text-muted)';
     return '<tr>' +
       '<td style="font-size:13px;">' +
