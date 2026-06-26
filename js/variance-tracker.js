@@ -1,8 +1,9 @@
 // ============================================================
-// variance-tracker.js — V3
-// Uses renderVariance() pattern matching existing app.js
-// 2-level navigation: Facility cards → filtered SKU table
-// Expiry Loss/Gain rows shown with distinct styling
+// variance-tracker.js — V4
+// Changes:
+//   - Date filter dropdown (populated from available dates in month)
+//   - Remark button fixed (Process_Date normalised to YYYY-MM-DD)
+//   - _downloadRows populated with full variance data for CSV export
 // ============================================================
 
 function renderVariance() {
@@ -11,14 +12,18 @@ function renderVariance() {
   var root = document.getElementById('variance-root');
 
   var now = new Date();
-  var m1 = now.getMonth()+1; var defaultMonth = now.getFullYear() + '-' + (m1<10?'0'+m1:''+m1);
+  var m1 = now.getMonth()+1;
+  var defaultMonth = now.getFullYear() + '-' + (m1<10?'0'+m1:''+m1);
 
   root.innerHTML =
     '<div class="page-header">' +
       '<div class="page-header-row">' +
         '<div><h2>Variance Tracker</h2><p>MTD variance by facility — click a facility to drill down</p></div>' +
-        '<div class="page-header-controls">' +
+        '<div class="page-header-controls" style="display:flex;align-items:center;gap:10px;">' +
           _buildMonthSelect('variance-month-picker', defaultMonth, '_varianceMonthChange') +
+          '<select id="variance-date-picker" class="month-select" onchange="_varianceDateChange(this.value)" style="min-width:130px;">' +
+            '<option value="">All Dates</option>' +
+          '</select>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -34,16 +39,71 @@ function renderVariance() {
       '<div class="card"><div id="variance-table-container"><div class="loading-msg">Loading…</div></div></div>' +
     '</div>';
 
-  _varianceLoadFacilities(defaultMonth);
+  _varianceCurrentMonth = defaultMonth;
+  _varianceCurrentDate  = '';
+  _varianceLoadDates(defaultMonth);
+  _varianceLoadFacilities(defaultMonth, '');
 }
 
 var _varianceCurrentMonth = '';
+var _varianceCurrentDate  = '';
+
+// ── Date helpers ──────────────────────────────────────────────
+function _vNormDate(raw) {
+  if (!raw) return '';
+  if (raw instanceof Date) {
+    var mo = raw.getMonth()+1; var dy = raw.getDate();
+    return raw.getFullYear()+'-'+(mo<10?'0'+mo:''+mo)+'-'+(dy<10?'0'+dy:''+dy);
+  }
+  var s = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (s.length > 10) {
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      var mo2=d.getMonth()+1; var dy2=d.getDate();
+      return d.getFullYear()+'-'+(mo2<10?'0'+mo2:''+mo2)+'-'+(dy2<10?'0'+dy2:''+dy2);
+    }
+  }
+  return s.substring(0,10);
+}
+
+// ── Load available dates for the selected month ───────────────
+function _varianceLoadDates(month) {
+  apiFetch('getDailyTrend', { month: month }, true).then(function(data) {
+    var trend = (data && data.trend) ? data.trend : [];
+    var sel = document.getElementById('variance-date-picker');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">All Dates</option>';
+    trend.forEach(function(d) {
+      var dateStr = d.date || '';
+      if (!dateStr) return;
+      var opt = document.createElement('option');
+      opt.value = dateStr;
+      // Format: "24 Jun"
+      var parts = dateStr.split('-');
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      opt.textContent = parseInt(parts[2]) + ' ' + months[parseInt(parts[1])-1] + ' ' + parts[0];
+      sel.appendChild(opt);
+    });
+  }).catch(function() {});
+}
 
 function _varianceMonthChange(month) {
   _varianceCurrentMonth = month;
+  _varianceCurrentDate  = '';
+  var dateSel = document.getElementById('variance-date-picker');
+  if (dateSel) dateSel.value = '';
   document.getElementById('variance-level2').style.display = 'none';
   document.getElementById('variance-level1').style.display = '';
-  _varianceLoadFacilities(month);
+  _varianceLoadDates(month);
+  _varianceLoadFacilities(month, '');
+}
+
+function _varianceDateChange(date) {
+  _varianceCurrentDate = date;
+  document.getElementById('variance-level2').style.display = 'none';
+  document.getElementById('variance-level1').style.display = '';
+  _varianceLoadFacilities(_varianceCurrentMonth, date);
 }
 
 function _varianceBack() {
@@ -51,14 +111,39 @@ function _varianceBack() {
   document.getElementById('variance-level1').style.display = '';
 }
 
-function _varianceLoadFacilities(month) {
+// ── Level 1: Facility cards ───────────────────────────────────
+function _varianceLoadFacilities(month, date) {
   _varianceCurrentMonth = month;
   var container = document.getElementById('variance-facility-cards');
   container.innerHTML = '<div class="loading-msg">Loading facilities…</div>';
 
-  apiCall('getVarianceFacilities', { month: month }, function(facilities) {
+  var params = { month: month };
+  if (date) params.date = date;
+
+  apiCall('getVarianceFacilities', params, function(facilities) {
     _varianceRenderCards(facilities || []);
+    // Populate download rows with full unfiltered data
+    _variancePopulateDownload(month, date);
   });
+}
+
+function _variancePopulateDownload(month, date) {
+  var params = { month: month };
+  if (date) params.date = date;
+  apiFetch('getVariance', params, true).then(function(records) {
+    var cols = ['Process_Date','Facility_Raw','Facility_Display','Facility_Type','Brand',
+                'Username','SKU_Code','Item_Name','Added_Qty','Removed_Qty',
+                'Variance_Qty','Status','Has_Replace','Replace_Qty','Source_Remark'];
+    APP._downloadRows = (records || []).map(function(r) {
+      var row = {};
+      cols.forEach(function(c) { row[c] = _vNormDate(r[c]) || r[c] || ''; });
+      // Normalise date column
+      row['Process_Date'] = _vNormDate(r['Process_Date']);
+      // Trim username
+      row['Username'] = String(r['Username'] || '').split('@')[0];
+      return row;
+    });
+  }).catch(function() {});
 }
 
 function _varianceRenderCards(facilities) {
@@ -92,7 +177,7 @@ function _varianceRenderCards(facilities) {
   });
   html += '</div>';
   container.innerHTML = html;
-  // Attach click via addEventListener to avoid quote-escaping issues
+
   container.querySelectorAll('.facility-card').forEach(function(card) {
     card.addEventListener('click', function() {
       _varianceDrilldown(card.getAttribute('data-fac'));
@@ -100,13 +185,17 @@ function _varianceRenderCards(facilities) {
   });
 }
 
+// ── Level 2: Drill-down table ─────────────────────────────────
 function _varianceDrilldown(facility) {
   document.getElementById('variance-level1').style.display = 'none';
   document.getElementById('variance-level2').style.display = '';
   document.getElementById('variance-l2-title').textContent = facility;
   document.getElementById('variance-table-container').innerHTML = '<div class="loading-msg">Loading variance data…</div>';
 
-  apiCall('getVariance', { month: _varianceCurrentMonth, facility: facility }, function(records) {
+  var params = { month: _varianceCurrentMonth, facility: facility };
+  if (_varianceCurrentDate) params.date = _varianceCurrentDate;
+
+  apiCall('getVariance', params, function(records) {
     _varianceRenderTable(records || []);
   });
 }
@@ -118,17 +207,18 @@ function _varianceRenderTable(records) {
     return;
   }
 
-  // Group by date newest first
   var byDate = {};
   records.forEach(function(r) {
-    var d = r['Process_Date'] || '';
+    var d = _vNormDate(r['Process_Date']);
     if (!byDate[d]) byDate[d] = [];
     byDate[d].push(r);
   });
 
   var html = '<div class="table-wrap"><table><thead><tr>' +
     '<th>Type</th><th>SKU / Item</th><th>User</th>' +
-    '<th>Added</th><th>Removed</th><th>Variance</th>' +
+    '<th style="text-align:right">Added</th>' +
+    '<th style="text-align:right">Removed</th>' +
+    '<th style="text-align:right">Variance</th>' +
     '<th>Status</th><th>Expiry Impact</th><th></th>' +
     '</tr></thead><tbody>';
 
@@ -139,12 +229,12 @@ function _varianceRenderTable(records) {
 
     recs.forEach(function(r) {
       var vQty    = parseFloat(r['Variance_Qty']) || 0;
-      var expSt   = r['Expiry_Status'] || '';
+      var expSt   = String(r['Expiry_Status'] || '').trim().toLowerCase();
       var diffDays = parseFloat(r['Expiry_Diff_Days']) || 0;
 
       var rowStyle = '';
-      if (expSt === 'Loss')      rowStyle = 'background:#fff5f5;';
-      else if (expSt === 'Gain') rowStyle = 'background:#f0fff4;';
+      if (expSt === 'loss')      rowStyle = 'background:#fff5f5;';
+      else if (expSt === 'gain') rowStyle = 'background:#f0fff4;';
       else if (vQty > 0)         rowStyle = 'background:#ebf8ff;';
       else if (vQty < 0)         rowStyle = 'background:#fffaf0;';
 
@@ -152,7 +242,7 @@ function _varianceRenderTable(records) {
       if (r['Has_Replace'] === 'YES') statusHtml += ' <span class="badge badge-red" style="font-size:10px;">REPLACE</span>';
 
       var expiryHtml = '';
-      if (expSt === 'Loss' || expSt === 'Gain') {
+      if (expSt === 'loss' || expSt === 'gain') {
         var dText = diffDays > 0
           ? '<span style="color:#DC2626;font-weight:700;">▼ ' + diffDays + 'd lost</span>'
           : '<span style="color:#059669;font-weight:700;">▲ ' + Math.abs(diffDays) + 'd gained</span>';
@@ -165,11 +255,12 @@ function _varianceRenderTable(records) {
       html +=
         '<tr style="' + rowStyle + '">' +
         '<td><span class="badge badge-blue" style="font-size:10px;">' + _vEsc(r['Facility_Type'] || '') + '</span></td>' +
-        '<td><div style="font-size:12px;font-weight:600;font-family:monospace;">' + _vEsc(r['SKU_Code'] || '') + '</div><div style="font-size:11px;color:var(--text-muted);">' + _vEsc(r['Item_Name'] || '') + '</div></td>' +
-        '<td style="font-size:12px;">' + _vEsc((r['Username'] || '').split('@')[0]) + '</td>' +
-        '<td style="color:var(--green);font-weight:600;text-align:right;">' + (r['Added_Qty'] || 0) + '</td>' +
-        '<td style="color:var(--orange);font-weight:600;text-align:right;">' + (r['Removed_Qty'] || 0) + '</td>' +
-        '<td style="text-align:right;">' + fmtVar(vQty) + '</td>' +
+        '<td><div style="font-size:12px;font-weight:600;font-family:monospace;">' + _vEsc(r['SKU_Code'] || '') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);">' + _vEsc(r['Item_Name'] || '') + '</div></td>' +
+        '<td style="font-size:12px;">' + _vEsc(String(r['Username'] || '').split('@')[0]) + '</td>' +
+        '<td class="num" style="color:var(--green);font-weight:600;">' + (r['Added_Qty'] || 0) + '</td>' +
+        '<td class="num" style="color:var(--orange);font-weight:600;">' + (r['Removed_Qty'] || 0) + '</td>' +
+        '<td class="num">' + fmtVar(vQty) + '</td>' +
         '<td>' + statusHtml + '</td>' +
         '<td>' + expiryHtml + '</td>' +
         '<td>' + _vRemarkCell(r) + '</td>' +
@@ -185,31 +276,45 @@ function _vEsc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// Backward compat alias
 var Variance = { init: function(){}, render: renderVariance };
 
-// Show existing remark text if available, otherwise show Add button
+// ── Remark cell — date normalised to YYYY-MM-DD ───────────────
 function _vRemarkCell(r) {
   var existingRemark = String(r['User_Remark'] || r['Source_Remark'] || '').trim();
-  var date     = String(r['Process_Date']    || '');
-  var facility = String(r['Facility_Display']|| r['Facility_Raw'] || '');
-  var sku      = String(r['SKU_Code']        || '');
-  var username = String(r['Username']        || '').split('@')[0];
-  var item     = String(r['Item_Name']       || '');
+
+  // Normalise date — Sheets may return Date objects or timezone strings
+  var date     = _vNormDate(r['Process_Date']);
+  var facility = String(r['Facility_Display'] || r['Facility_Raw'] || '');
+  var sku      = String(r['SKU_Code']         || '');
+  var username = String(r['Username']         || '').split('@')[0];
+  var item     = String(r['Item_Name']        || '');
   var key      = date + '_' + facility + '_' + sku;
 
-  if (existingRemark && existingRemark !== '') {
+  if (existingRemark) {
     return '<div style="font-size:11.5px;color:var(--text-secondary);font-style:italic;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + _vEsc(existingRemark) + '">' +
       '<svg viewBox="0 0 24 24" width="11" height="11" style="margin-right:3px;vertical-align:middle;color:var(--green)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
       _vEsc(existingRemark.length > 40 ? existingRemark.substring(0,40) + '...' : existingRemark) +
     '</div>';
   }
-  return '<button class="btn-remark" onclick="openRemarkModal(' +
-    JSON.stringify(key) + ',' +
-    JSON.stringify(date) + ',' +
-    JSON.stringify(facility) + ',' +
-    JSON.stringify(username) + ',' +
-    JSON.stringify(sku) + ',' +
-    JSON.stringify(item) +
-    ')">+ Remark</button>';
+
+  // Use data attributes to avoid JSON.stringify quoting issues inside HTML
+  return '<button class="btn-remark" ' +
+    'data-key="'      + _vEsc(key)      + '" ' +
+    'data-date="'     + _vEsc(date)     + '" ' +
+    'data-facility="' + _vEsc(facility) + '" ' +
+    'data-username="' + _vEsc(username) + '" ' +
+    'data-sku="'      + _vEsc(sku)      + '" ' +
+    'data-item="'     + _vEsc(item)     + '" ' +
+    'onclick="_vOpenRemark(this)">+ Remark</button>';
+}
+
+function _vOpenRemark(btn) {
+  openRemarkModal(
+    btn.getAttribute('data-key'),
+    btn.getAttribute('data-date'),
+    btn.getAttribute('data-facility'),
+    btn.getAttribute('data-username'),
+    btn.getAttribute('data-sku'),
+    btn.getAttribute('data-item')
+  );
 }
