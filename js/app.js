@@ -121,6 +121,21 @@ function _loadArchiveMonths() {
       var o = document.createElement('option');
       o.value = m.key; o.textContent = m.display; sel.appendChild(o);
     });
+    // If no current month data exists, auto-select the latest archive month
+    if (APP.archiveMonths.length > 0) {
+      apiGetLatestDate().then(function(d) {
+        if (!d || !d.date) return;
+        var latestMonth = String(d.date).substring(0,7);
+        var now = new Date();
+        var currentMonth = now.getFullYear()+'-'+(now.getMonth()+1<10?'0':'')+(now.getMonth()+1);
+        if (latestMonth !== currentMonth) {
+          // Latest data is from a previous month — auto-select it
+          sel.value = latestMonth;
+          APP.currentMonth = latestMonth;
+          navigate(APP.currentModule);
+        }
+      }).catch(function(){});
+    }
   }).catch(function(){});
 }
 
