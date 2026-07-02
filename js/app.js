@@ -1,24 +1,30 @@
-// app.js — V4 PATCHED
+// app.js — V4 FINAL
 // Changes:
+//   - initApp sets APP.currentMonth to current YYYY-MM on load
+//   - _loadArchiveMonths uses concrete month key for "Current Month" option
+//   - onMonthChange never sets empty string — always uses concrete month
+//   - _buildMonthSelect updated to match
 //   - downloadCSV fetches full Processed_Data for current month
-//     with columns: Process_Date, Facility_Raw, Facility_Display,
-//     Facility_Type, Brand, Username, SKU_Code, Item_Name,
-//     Added_Qty, Removed_Qty, Variance_Qty, Status,
-//     Has_Replace, Replace_Qty, Source_Remark
-//   - Works from any module (daily, mtd, variance, remarks etc)
 
 var APP = {
   currentModule: 'daily',
-  currentMonth: '',
-  latestDate: null,
+  currentMonth:  '',   // set to YYYY-MM in initApp
+  latestDate:    null,
   archiveMonths: [],
   _downloadRows: [],
 };
 
 var SHEET_LINKS = {
   processedData: 'https://docs.google.com/spreadsheets/d/1DIVGIpyvfsPVL9f80c6fnQO9fHyyDdhhgK8BRZF9U6s/edit?gid=1917601641',
-  remarks: 'https://docs.google.com/spreadsheets/d/1DIVGIpyvfsPVL9f80c6fnQO9fHyyDdhhgK8BRZF9U6s/edit?gid=126229950',
+  remarks:       'https://docs.google.com/spreadsheets/d/1DIVGIpyvfsPVL9f80c6fnQO9fHyyDdhhgK8BRZF9U6s/edit?gid=126229950',
 };
+
+// ── Current month helper ───────────────────────────────────────
+function _appCurrentMonth() {
+  var now = new Date();
+  var m   = now.getMonth()+1;
+  return now.getFullYear()+'-'+(m<10?'0'+m:''+m);
+}
 
 // ── Cache helpers ──────────────────────────────────────────────
 function lsGet(key) {
@@ -35,8 +41,8 @@ function lsClear(key) {
 function startKeepAlive() {
   setInterval(function() {
     var cb = 'ka_' + Date.now();
-    var s = document.createElement('script');
-    var t = setTimeout(function() { delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }, 8000);
+    var s  = document.createElement('script');
+    var t  = setTimeout(function() { delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }, 8000);
     window[cb] = function() { clearTimeout(t); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); };
     s.src = API.BASE_URL + '?action=ping&callback=' + cb;
     document.head.appendChild(s);
@@ -44,7 +50,10 @@ function startKeepAlive() {
 }
 
 // ── Init ───────────────────────────────────────────────────────
+// FIXED: set APP.currentMonth explicitly on load so all API calls
+// have a concrete month param — never empty string
 function initApp() {
+  APP.currentMonth = _appCurrentMonth();
   _loadArchiveMonths();
   startKeepAlive();
   navigate('daily');
@@ -62,10 +71,10 @@ function navigate(module) {
     remarks: 'Remarks', 'report-logic': 'Report Logic'
   };
   document.getElementById('topbar-module').textContent = labels[module] || module;
-  var showMonth = module !== 'daily';
-  document.getElementById('month-selector-wrap').style.display = showMonth ? 'flex' : 'none';
+  var showMonth    = module !== 'daily';
   var showDownload = (module === 'daily' || module === 'mtd' || module === 'variance' || module === 'expiry');
-  document.getElementById('btn-download').style.display = showDownload ? 'flex' : 'none';
+  document.getElementById('month-selector-wrap').style.display = showMonth    ? 'flex'  : 'none';
+  document.getElementById('btn-download').style.display        = showDownload ? 'flex'  : 'none';
   APP._downloadRows = [];
   destroyCharts();
   document.getElementById('page-content').innerHTML = '';
@@ -79,12 +88,10 @@ function navigate(module) {
   }
 }
 
+// FIXED: never sets empty string — always a concrete YYYY-MM
 function onMonthChange() {
   var val = document.getElementById('month-select').value;
-  // 'Current Month' option has value = currentMonthKey, not empty string
-  var now = new Date();
-  var cm  = now.getFullYear()+'-'+(now.getMonth()+1<10?'0':'')+(now.getMonth()+1);
-  APP.currentMonth = (val === cm) ? '' : val;
+  APP.currentMonth = val || _appCurrentMonth();
   clearAPICache();
   navigate(APP.currentModule);
 }
@@ -108,46 +115,54 @@ function setSyncStatus(state, text) {
 }
 function setSyncLive(dateStr) {
   var now = new Date();
-  var t = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-  var label = dateStr ? 'Data: ' + dateStr + ' · ' + t : 'Synced ' + t;
-  setSyncStatus('live', label);
+  var t   = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  setSyncStatus('live', dateStr ? 'Data: ' + dateStr + ' · ' + t : 'Synced ' + t);
 }
 function setSyncError() { setSyncStatus('error', 'Sync failed'); }
-function setSyncIdle()  { setSyncStatus('idle', 'Loading…'); }
+function setSyncIdle()  { setSyncStatus('idle',  'Loading…');   }
 
 // ── Archive months ─────────────────────────────────────────────
+// FIXED: "Current Month" option uses concrete month key as value,
+// and auto-selects latest archive month if no current-month data exists
 function _loadArchiveMonths() {
+  var cm  = _appCurrentMonth();
   apiGetArchiveMonths().then(function(data) {
     APP.archiveMonths = data.months || [];
     var sel = document.getElementById('month-select');
-    sel.innerHTML = '<option value="">Current Month</option>';
+
+    // "Current Month" gets the actual month key as its value
+    sel.innerHTML = '<option value="' + cm + '">Current Month</option>';
     APP.archiveMonths.forEach(function(m) {
+      // Don't duplicate current month if it's already in archive list
+      if (m.key === cm) return;
       var o = document.createElement('option');
       o.value = m.key; o.textContent = m.display; sel.appendChild(o);
     });
-    // If no current month data exists, auto-select the latest archive month
-    if (APP.archiveMonths.length > 0) {
-      apiGetLatestDate().then(function(d) {
-        if (!d || !d.date) return;
-        var latestMonth = String(d.date).substring(0,7);
-        var now = new Date();
-        var currentMonth = now.getFullYear()+'-'+(now.getMonth()+1<10?'0':'')+(now.getMonth()+1);
-        if (latestMonth !== currentMonth) {
-          // Latest data is from a previous month — auto-select it
-          sel.value = latestMonth;
-          APP.currentMonth = latestMonth;
-          navigate(APP.currentModule);
-        }
-      }).catch(function(){});
-    }
+
+    // Set selected value to match APP.currentMonth
+    sel.value = APP.currentMonth || cm;
+
+    // If latest data is from a previous month, auto-select it
+    apiGetLatestDate().then(function(d) {
+      if (!d || !d.date) return;
+      var latestMonth = String(d.date).substring(0, 7);
+      if (latestMonth !== cm) {
+        // No current month data — switch to latest available
+        sel.value = latestMonth;
+        APP.currentMonth = latestMonth;
+        clearAPICache();
+        navigate(APP.currentModule);
+      }
+    }).catch(function(){});
+
   }).catch(function(){});
 }
 
 // ── Toggle sidebar ─────────────────────────────────────────────
 function toggleSidebar() {
   var sb = document.getElementById('sidebar');
-  if (window.innerWidth <= 768) { sb.classList.toggle('mobile-open'); }
-  else { sb.classList.toggle('collapsed'); }
+  if (window.innerWidth <= 768) sb.classList.toggle('mobile-open');
+  else sb.classList.toggle('collapsed');
 }
 
 // ── Destroy charts ─────────────────────────────────────────────
@@ -174,22 +189,19 @@ function showToast(message, type) {
 }
 
 // ── Month Select Builder ───────────────────────────────────────
+// FIXED: "Current Month" option value = concrete month key
 function _buildMonthSelect(id, selectedMonth, onchangeFn) {
-  var now = new Date();
-  var currentMonthKey = now.getFullYear() + '-' + (now.getMonth()+1<10?'0':'') + (now.getMonth()+1);
-  var opts = '<option value=""' + (!selectedMonth || selectedMonth === currentMonthKey ? ' selected' : '') + '>Current Month</option>';
+  var cm   = _appCurrentMonth();
+  var sel  = selectedMonth || cm;
+  var opts = '<option value="' + cm + '"' + (sel === cm ? ' selected' : '') + '>Current Month</option>';
   (APP.archiveMonths || []).forEach(function(m) {
-    opts += '<option value="' + m.key + '"' + (selectedMonth === m.key ? ' selected' : '') + '>' + m.display + '</option>';
+    if (m.key === cm) return; // skip if already shown as Current Month
+    opts += '<option value="' + m.key + '"' + (sel === m.key ? ' selected' : '') + '>' + m.display + '</option>';
   });
   return '<select id="' + id + '" class="month-select" onchange="' + onchangeFn + '(this.value)">' + opts + '</select>';
 }
 
 // ── Download CSV ───────────────────────────────────────────────
-// Always fetches full Processed_Data for the current month
-// Columns: Process_Date, Facility_Raw, Facility_Display, Facility_Type,
-//          Brand, Username, SKU_Code, Item_Name, Added_Qty, Removed_Qty,
-//          Variance_Qty, Status, Has_Replace, Replace_Qty, Source_Remark
-
 var _CSV_COLS = [
   'Process_Date','Facility_Raw','Facility_Display','Facility_Type','Brand',
   'Username','SKU_Code','Item_Name','Added_Qty','Removed_Qty',
@@ -198,53 +210,39 @@ var _CSV_COLS = [
 
 function downloadCSV() {
   showToast('Preparing download…', 'info');
-
-  // Determine month — use current selection or default to current month
-  var now = new Date();
-  var m1  = now.getMonth()+1;
-  var month = APP.currentMonth || (now.getFullYear() + '-' + (m1<10?'0'+m1:''+m1));
+  var month = APP.currentMonth || _appCurrentMonth();
 
   apiFetch('getVarianceData', { month: month }, true)
     .then(function(data) {
       var records = (data && data.rows) ? data.rows : (Array.isArray(data) ? data : []);
-      if (!records.length) {
-        showToast('No data available for this month', 'info');
-        return;
-      }
+      if (!records.length) { showToast('No data available for this month', 'info'); return; }
       _doCSVDownload(records, month);
     })
-    .catch(function(e) {
-      // Fallback: try getVariance endpoint
+    .catch(function() {
       apiFetch('getVariance', { month: month }, true)
         .then(function(records) {
-          if (!records || !records.length) {
-            showToast('No data available for this month', 'info');
-            return;
-          }
+          if (!records || !records.length) { showToast('No data available for this month', 'info'); return; }
           _doCSVDownload(records, month);
         })
-        .catch(function() {
-          showToast('Download failed — please try again', 'error');
-        });
+        .catch(function() { showToast('Download failed — please try again', 'error'); });
     });
 }
 
 function _normDateForCSV(raw) {
   if (!raw) return '';
-  if (typeof raw === 'object' && raw instanceof Date) {
+  if (raw instanceof Date) {
     var mo = raw.getMonth()+1; var dy = raw.getDate();
     return raw.getFullYear()+'-'+(mo<10?'0'+mo:''+mo)+'-'+(dy<10?'0'+dy:''+dy);
   }
   var s = String(raw).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   if (s.length > 10) {
-    var d = new Date(s);
-    if (!isNaN(d.getTime())) {
-      var mo2=d.getMonth()+1; var dy2=d.getDate();
-      return d.getFullYear()+'-'+(mo2<10?'0'+mo2:''+mo2)+'-'+(dy2<10?'0'+dy2:''+dy2);
-    }
+    var months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+                  Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+    var m = s.match(/\w+\s+(\w+)\s+(\d{2})\s+(\d{4})/);
+    if (m && months[m[1]]) return m[3]+'-'+months[m[1]]+'-'+m[2];
   }
-  return s.substring(0,10);
+  return s.substring(0, 10);
 }
 
 function _doCSVDownload(records, month) {
@@ -252,14 +250,13 @@ function _doCSVDownload(records, month) {
     return _CSV_COLS.map(function(col) {
       var val = r[col];
       if (col === 'Process_Date') val = _normDateForCSV(val);
-      else if (col === 'Username') val = String(val || '').split('@')[0];
-      else val = String(val || '');
-      return '"' + val.replace(/"/g, '""') + '"';
+      else if (col === 'Username') val = String(val||'').split('@')[0];
+      else val = String(val||'');
+      return '"' + val.replace(/"/g,'""') + '"';
     }).join(',');
   })).join('\n');
-
   var a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'processed_data_' + month + '_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   showToast('Downloaded ' + records.length + ' records', 'success');
@@ -291,16 +288,11 @@ function submitRemark() {
   var btn = document.getElementById('submit-remark-btn');
   btn.disabled = true; btn.textContent = 'Saving…';
   apiAddRemark({
-    remarkKey: _remarkPending.remarkKey,
-    date: _remarkPending.date,
-    facility: _remarkPending.facility,
-    username: _remarkPending.username,
-    sku: _remarkPending.sku,
-    remarkText: text
+    remarkKey: _remarkPending.remarkKey, date: _remarkPending.date,
+    facility: _remarkPending.facility,   username: _remarkPending.username,
+    sku: _remarkPending.sku,             remarkText: text
   }).then(function() {
-    closeRemarkModal();
-    clearAPICache();
-    showToast('Remark saved', 'success');
+    closeRemarkModal(); clearAPICache(); showToast('Remark saved', 'success');
   }).catch(function(e) {
     showToast(e.message || 'Failed to save', 'error');
   }).finally(function() {
@@ -310,16 +302,16 @@ function submitRemark() {
 }
 
 // ── Shared helpers ─────────────────────────────────────────────
-function fmtNum(n) { n = parseInt(n) || 0; return n.toLocaleString('en-IN'); }
+function fmtNum(n) { n = parseInt(n)||0; return n.toLocaleString('en-IN'); }
 function fmtVar(n) {
-  n = parseInt(n) || 0;
-  var s = (n >= 0 ? '+' : '') + n.toLocaleString('en-IN');
+  n = parseInt(n)||0;
+  var s   = (n >= 0 ? '+' : '') + n.toLocaleString('en-IN');
   var cls = n === 0 ? 'variance-zero' : (n > 0 ? 'variance-pos' : 'variance-neg');
   return '<span class="' + cls + '">' + s + '</span>';
 }
 function statusBadge(status) {
-  var map = { 'Balanced': 'badge-green', 'Added Not Removed': 'badge-orange', 'Removed Not Added': 'badge-red' };
-  return '<span class="badge ' + (map[status] || 'badge-gray') + '">' + _esc(status || '—') + '</span>';
+  var map = { 'Balanced':'badge-green','Added Not Removed':'badge-orange','Removed Not Added':'badge-red' };
+  return '<span class="badge ' + (map[status]||'badge-gray') + '">' + _esc(status||'—') + '</span>';
 }
 function emptyState(title, msg) {
   return '<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><h3>' + _esc(title) + '</h3><p>' + _esc(msg) + '</p></div>';
@@ -328,7 +320,7 @@ function skeletonRows(cols, rows) {
   var h = '';
   for (var i = 0; i < rows; i++) {
     h += '<tr>';
-    for (var j = 0; j < cols; j++) h += '<td><div class="skeleton" style="height:13px;width:' + (45 + Math.random() * 40) + '%"></div></td>';
+    for (var j = 0; j < cols; j++) h += '<td><div class="skeleton" style="height:13px;width:' + (45+Math.random()*40) + '%"></div></td>';
     h += '</tr>';
   }
   return h;
@@ -350,15 +342,15 @@ function kpiCard(label, value, color, bg, icon, accent, small) {
   return '<div class="' + cls + '" style="--kpi-color:' + color + ';--kpi-bg:' + bg + '">' +
     '<div class="kpi-label">' + label + '</div>' +
     '<div class="kpi-value' + (accent ? ' accent' : '') + '">' + value + '</div>' +
-    '<div class="kpi-icon"><svg viewBox="0 0 24 24">' + (icons[icon] || '') + '</svg></div>' +
+    '<div class="kpi-icon"><svg viewBox="0 0 24 24">' + (icons[icon]||'') + '</svg></div>' +
     '</div>';
 }
 function _esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function showLoading(msg) {
   var el = document.getElementById('loading-overlay');
-  var t = el.querySelector('.spinner-text'); if (t) t.textContent = msg || 'Loading…';
+  var t  = el.querySelector('.spinner-text'); if (t) t.textContent = msg || 'Loading…';
   el.style.display = 'flex';
 }
 function hideLoading() { document.getElementById('loading-overlay').style.display = 'none'; }
