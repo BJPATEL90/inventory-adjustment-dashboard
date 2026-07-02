@@ -80,7 +80,11 @@ function navigate(module) {
 }
 
 function onMonthChange() {
-  APP.currentMonth = document.getElementById('month-select').value;
+  var val = document.getElementById('month-select').value;
+  // 'Current Month' option has value = currentMonthKey, not empty string
+  var now = new Date();
+  var cm  = now.getFullYear()+'-'+(now.getMonth()+1<10?'0':'')+(now.getMonth()+1);
+  APP.currentMonth = (val === cm) ? '' : val;
   clearAPICache();
   navigate(APP.currentModule);
 }
@@ -173,7 +177,7 @@ function showToast(message, type) {
 function _buildMonthSelect(id, selectedMonth, onchangeFn) {
   var now = new Date();
   var currentMonthKey = now.getFullYear() + '-' + (now.getMonth()+1<10?'0':'') + (now.getMonth()+1);
-  var opts = '<option value="' + currentMonthKey + '"' + (!selectedMonth || selectedMonth === currentMonthKey ? ' selected' : '') + '>Current Month</option>';
+  var opts = '<option value=""' + (!selectedMonth || selectedMonth === currentMonthKey ? ' selected' : '') + '>Current Month</option>';
   (APP.archiveMonths || []).forEach(function(m) {
     opts += '<option value="' + m.key + '"' + (selectedMonth === m.key ? ' selected' : '') + '>' + m.display + '</option>';
   });
